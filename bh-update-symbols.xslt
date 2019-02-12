@@ -22,14 +22,12 @@
   <xsl:key name="ids" match="*[@id]" use="@id"/>
   <xsl:key name="defs" match="/*/svg:defs/*[@id]" use="@id"/>
 
+  <xsl:variable name="root-node" select="/*[1]"/>
+
   <xsl:template name="debug">
     <xsl:param name="elem" select="."/>
     <xsl:param name="message" select="''"/>
-    <xsl:param name="action" select="''"/>
     <xsl:message>
-      <xsl:if test="$action">
-        <xsl:value-of select="concat($action, ' ')"/>
-      </xsl:if>
       <xsl:value-of select="concat(name($elem), '#', $elem/@id)"/>
       <xsl:if test="$message">
         <xsl:value-of select="concat(': ', $message)"/>
@@ -37,34 +35,42 @@
     </xsl:message>
   </xsl:template>
 
+
   <xsl:template name="emit-def">
     <xsl:param name="id" select="@id"/>
-    <xsl:variable name="defs-from-lib">
-      <xsl:for-each select="$library">
-        <xsl:copy-of select="key('defs', $id)"/>
-      </xsl:for-each>
-    </xsl:variable>
-    <xsl:variable name="from-lib" select="exsl:node-set($defs-from-lib)/*"/>
-    <xsl:choose>
-      <xsl:when test="count($from-lib) > 0">
-        <xsl:variable name="def" select="$from-lib[1]"/>
-        <xsl:call-template name="debug">
-          <xsl:with-param name="elem" select="$def"/>
-          <xsl:with-param name="action">UPDATE</xsl:with-param>
-          <xsl:with-param name="message">from library</xsl:with-param>
-        </xsl:call-template>
-        <xsl:apply-templates select="$def" mode="strip-child-ids"/>
-      </xsl:when>
-      <xsl:otherwise>
-        <xsl:variable name="def" select="key('defs', $id)"/>
-        <xsl:call-template name="debug">
-          <xsl:with-param name="elem" select="$def"/>
-          <xsl:with-param name="action">COPY  </xsl:with-param>
-          <xsl:with-param name="message">not found in library</xsl:with-param>
-        </xsl:call-template>
-        <xsl:apply-templates select="$def"/>
-      </xsl:otherwise>
-    </xsl:choose>
+    <xsl:for-each select="$root-node"> <!-- ensure context is source document -->
+      <xsl:variable name="orig" select="key('defs', $id)[1]"/>
+      <xsl:variable name="defs-from-lib">
+        <xsl:for-each select="$library">
+          <xsl:copy-of select="key('defs', $id)"/>
+        </xsl:for-each>
+      </xsl:variable>
+      <xsl:variable name="from-lib" select="exsl:node-set($defs-from-lib)/*"/>
+      <xsl:choose>
+        <xsl:when test="count($from-lib) > 0">
+          <xsl:for-each select="$from-lib[1]">
+            <xsl:call-template name="debug">
+              <xsl:with-param name="message">
+                <xsl:choose>
+                  <xsl:when test="$orig">UPDATED</xsl:when>
+                  <xsl:otherwise>ADDED</xsl:otherwise>
+                </xsl:choose>
+              </xsl:with-param>
+            </xsl:call-template>
+            <xsl:apply-templates mode="strip-child-ids"/>
+          </xsl:for-each>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:for-each select="$orig">
+            <!-- FIXME: only log message if verbose? -->
+            <xsl:call-template name="debug">
+              <xsl:with-param name="message">not in library</xsl:with-param>
+            </xsl:call-template>
+            <xsl:apply-templates/>
+          </xsl:for-each>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:for-each>
   </xsl:template>
 
   <xsl:template match="*" mode="strip-ids">
@@ -98,8 +104,7 @@
     <xsl:choose>
       <xsl:when test="not(key('uses', @id))">
         <xsl:call-template name="debug">
-          <xsl:with-param name="action">DELETE</xsl:with-param>
-          <xsl:with-param name="message">unused</xsl:with-param>
+          <xsl:with-param name="message">unused symbol DELETED</xsl:with-param>
         </xsl:call-template>
       </xsl:when>
       <xsl:otherwise>
