@@ -14,6 +14,7 @@
                      | document('../symbols/bh-bales-48x24x18.svg')
                      | document('../symbols/bh-bales-42x18x16.svg')
                      | document('../symbols/bh-bales-36x18x15.svg')"/>
+  <xsl:param name="verbose"/>
 
   <xsl:key name="uses"
            match="svg:use[starts-with(@xlink:href, '#')]"
@@ -65,10 +66,11 @@
         </xsl:when>
         <xsl:otherwise>
           <xsl:for-each select="$def-from-src">
-            <!-- FIXME: only log message if verbose? -->
-            <xsl:call-template name="debug">
-              <xsl:with-param name="message">not in library</xsl:with-param>
-            </xsl:call-template>
+            <xsl:if test="$verbose">
+              <xsl:call-template name="debug">
+                <xsl:with-param name="message">not in library</xsl:with-param>
+              </xsl:call-template>
+            </xsl:if>
             <xsl:apply-templates select="."/>
           </xsl:for-each>
         </xsl:otherwise>

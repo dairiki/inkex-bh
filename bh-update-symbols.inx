@@ -6,7 +6,8 @@
   <dependency type="executable" location="extensions">bh-update-symbols.xslt</dependency>
   <dependency type="executable" location="path">xsltproc</dependency>
   <_param name="texthelp" type="description"
-          >Update Barn Hunt symbols to latest versions.  Also adds any patterns our other defs required by the Barn Hunt symbols.</_param>
+          >Update all Barn Hunt symbols to the latest versions in the symbol library.  This slso adds any patterns or other definitions required by the Barn Hunt symbols.</_param>
+  <_param name="verbose" type="boolean" _gui-text="Verbose output.  Enables diagnostic about regarding defs which were not found in the symbol library."></_param>
   <effect>
     <object-type>all</object-type>
     <effects-menu>
