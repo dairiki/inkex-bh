@@ -5,10 +5,15 @@
   <dependency type="executable" location="extensions">bh-update-symbols.sh</dependency>
   <dependency type="executable" location="extensions">bh-update-symbols.xslt</dependency>
   <dependency type="executable" location="path">xsltproc</dependency>
-  <_param name="texthelp" type="description"
-          >Update all Barn Hunt symbols to the latest versions in the symbol library.  This slso adds any patterns or other definitions required by the Barn Hunt symbols.</_param>
-  <_param name="verbose" type="boolean" _gui-text="Verbose output.  Enables diagnostic about regarding defs which were not found in the symbol library."></_param>
-  <effect>
+  <param name="tab" type="notebook">
+    <page name="Options" _gui-text="Options">
+      <_param name="verbose" type="boolean" _gui-text="Verbose output: note defs which were not found in the symbol library."></_param>
+    </page>
+    <page name="Help" _gui-text="Help">
+      <_param name="texthelp" type="description">Update all Barn Hunt symbols to the latest versions in the symbol library.  This also adds any patterns or other definitions required by the Barn Hunt symbols.</_param>
+    </page>
+  </param>
+  <effect needs-live-preview="false">
     <object-type>all</object-type>
     <effects-menu>
       <submenu _name="Barn Hunt"/>

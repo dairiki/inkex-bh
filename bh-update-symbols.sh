@@ -6,14 +6,14 @@ exec 3>&1 1>&2
 usage_error () {
     echo "Usage:" 1>&2
     echo 1>&2
-    echo "    ${0##*/} {input.svg}" 1>&2
+    echo "    ${0##*/} [--verbose={true|false}] <src.svg>" 1>&2
     exit 64 # EX_USAGE
 }
 
 
 xsltproc_opts="--nowrite"
 
-opts=$(getopt -o '' -l 'verbose:' -- "$@")
+opts=$(getopt -o '' -l 'verbose:' -l 'tab:' -- "$@")
 [ $? -eq 0 ] || usage_error
 eval set -- "$opts"
 while [ $# -gt 0 ]; do
@@ -22,6 +22,9 @@ while [ $# -gt 0 ]; do
             if [ "$2" = 'true' ]; then
                 xsltproc_opts="$xsltproc_opts --stringparam verbose true"
             fi
+            shift 2
+            ;;
+        --tab)
             shift 2
             ;;
         --)
