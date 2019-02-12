@@ -1,0 +1,28 @@
+#! /bin/sh
+set -e
+
+exec 3>&1 1>&2
+
+usage_error () {
+    echo "Usage:" 1>&2
+    echo 1>&2
+    echo "    ${0##*/} {input.svg}" 1>&2
+    exit 64 # EX_USAGE
+}
+
+
+[ $# -eq 1 ] || usage_error
+[ "${1#-}" = "$1" ] || usage_error
+
+INPUT_SVG="$1"
+TRANSFORM_XSLT="${0%/*}/bh-update-symbols.xslt"
+
+SYMBOLS_PATH=$(readlink -f ${0%/*}/../symbols)
+unset library
+for symbol_svg in "$SYMBOLS_PATH"/bh-*.svg; do
+    echo "Using symbols from ${symbol_svg##*/}" 1>&2
+    library="${library}${library:+ | }document('${symbol_svg}')"
+done
+
+exec xsltproc --nowrite --param library "$library" \
+     "$TRANSFORM_XSLT" "$INPUT_SVG" 1>&3

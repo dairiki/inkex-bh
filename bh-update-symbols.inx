@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <_name>Update Barn Hunt Symbols</_name>
+  <id>org.dairiki.bh.update-symbols</id>
+  <dependency type="executable" location="extensions">bh-update-symbols.sh</dependency>
+  <dependency type="executable" location="extensions">bh-update-symbols.xslt</dependency>
+  <dependency type="executable" location="path">xsltproc</dependency>
+  <_param name="texthelp" type="description"
+          >Update Barn Hunt symbols to latest versions.  Also adds any patterns our other defs required by the Barn Hunt symbols.</_param>
+  <effect>
+    <object-type>all</object-type>
+    <effects-menu>
+      <submenu _name="Barn Hunt"/>
+    </effects-menu>
+  </effect>
+  <script>
+    <command reldir="extensions">bh-update-symbols.sh</command>
+  </script>
+</inkscape-extension>
