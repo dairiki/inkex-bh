@@ -99,17 +99,8 @@
     </xsl:copy>
   </xsl:template>
 
-  <xsl:template match="*" mode="delete-unused">
-    <xsl:choose>
-      <xsl:when test="not(key('uses', @id))">
-        <xsl:call-template name="debug">
-          <xsl:with-param name="message">unused symbol DELETED</xsl:with-param>
-        </xsl:call-template>
-      </xsl:when>
-      <xsl:otherwise>
-        <xsl:call-template name="emit-def"/>
-      </xsl:otherwise>
-    </xsl:choose>
+  <xsl:template match="/*/svg:defs/svg:symbol">
+    <xsl:call-template name="emit-def"/>
   </xsl:template>
 
   <xsl:template match="text()|comment()|processing-instruction()">
@@ -126,7 +117,7 @@
   <xsl:template match="svg:defs">
     <xsl:copy>
       <xsl:copy-of select="@*"/>
-      <xsl:apply-templates select="svg:symbol" mode="delete-unused"/>
+      <xsl:apply-templates select="svg:symbol"/>
 
       <xsl:variable
           name="all-defs"
