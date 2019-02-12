@@ -19,7 +19,6 @@
            match="svg:use[starts-with(@xlink:href, '#')]"
            use="substring-after(@xlink:href, '#')"/>
 
-  <xsl:key name="ids" match="*[@id]" use="@id"/>
   <xsl:key name="defs" match="/*/svg:defs/*[@id]" use="@id"/>
 
   <xsl:variable name="root-node" select="/*[1]"/>
@@ -117,13 +116,12 @@
     <xsl:copy-of select="."/>
   </xsl:template>
 
-  <xsl:template match="*" name="copy">
+  <xsl:template match="*">
     <xsl:copy>
       <xsl:copy-of select="@*"/>
       <xsl:apply-templates select="node()"/>
     </xsl:copy>
   </xsl:template>
-
 
   <xsl:template match="svg:defs">
     <xsl:copy>
@@ -141,17 +139,5 @@
       </xsl:for-each>
     </xsl:copy>
   </xsl:template>
-
-  <!-- Check for references to undefined symbols -->
-  <xsl:template match="svg:use[starts-with(@xlink:href, '#')]">
-    <xsl:variable name="use" select="substring-after(@xlink:href, '#')"/>
-    <xsl:if test="not(key('ids', $use))">
-      <xsl:message
-          >Xlink to undefined target #<xsl:value-of select="$use"
-          /></xsl:message>
-    </xsl:if>
-    <xsl:call-template name="copy"/>
-  </xsl:template>
-
 
 </xsl:transform>
