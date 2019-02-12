@@ -13,7 +13,7 @@ usage_error () {
 
 xsltproc_opts="--nowrite"
 
-opts=$(getopt -o '' -l 'verbose:' -l 'tab:' -- "$@")
+opts=$(getopt -o '' -l 'verbose:' -l 'tab:,id:' -- "$@")
 [ $? -eq 0 ] || usage_error
 eval set -- "$opts"
 while [ $# -gt 0 ]; do
@@ -24,7 +24,7 @@ while [ $# -gt 0 ]; do
             fi
             shift 2
             ;;
-        --tab)
+        --tab|--id)
             shift 2
             ;;
         --)
