@@ -127,4 +127,15 @@
     </xsl:copy>
   </xsl:template>
 
+  <xsl:template match="/*">
+    <xsl:copy>
+      <xsl:copy-of select="@*"/>
+      <!-- Add dummy attribute just to force namespace decl -->
+      <xsl:attribute name="bh:placeholder"
+                     namespace="http://dairiki.org/barnhunt/inkscape-extensions"
+                     >dummy</xsl:attribute>
+      <xsl:apply-templates select="node()"/>
+    </xsl:copy>
+  </xsl:template>
+
 </xsl:transform>
