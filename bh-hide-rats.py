@@ -14,6 +14,10 @@ import simpletransform
 inkex.localize()
 
 
+NSMAP = inkex.NSS.copy()
+NSMAP['bh'] = 'http://dairiki.org/barnhunt/inkscape-extensions'
+
+
 def debug(message):
     inkex.errormsg(message)
 
@@ -39,15 +43,26 @@ class bounds(_bounds):
         return tuple.__repr__(self)
 
 
+def context_transform(el, map=[[1, 0, 0], [0, 1, 0]]):
+    """ Get the outer transform in effect for element.
+
+    This includes the transforms of all parent elements, but not the transform
+    of the element itself.
+
+    """
+    parent = el.getparent()
+    if parent is not None:
+        map = simpletransform.composeParents(parent, map)
+    return map
+
+
 def randomize_position(el, bbox):
     """ Randomize the position of element within bounding box.
     """
     bbox = bounds(bbox)
 
     # Work in page coordinates
-    parent = el.getparent()
-    assert parent is not None
-    local_trfm = simpletransform.composeParents(parent, [[1, 0, 0], [0, 1, 0]])
+    local_trfm = context_transform(el)
     el_bbox = bounds(simpletransform.computeBBox([el], local_trfm))
 
     # Compute random position offset
@@ -69,15 +84,26 @@ class HideRats(inkex.Effect):
         self.OptionParser.add_option("--tab")
         self.OptionParser.add_option("--verbose", type="inkbool")
 
-    def getBounds(self):
-        xmin = ymin = 0
+    def get_page_boundary(self):
         svg = self.document.getroot()
         xmax = self.unittouu(svg.attrib['width'])
         ymax = self.unittouu(svg.attrib['height'])
-        return bounds(xmin, xmax, ymin, ymax)
+        return bounds(0, xmax, 0, ymax)
+
+    def get_boundary(self):
+        document = self.document
+        bbox = None
+        for el in document.xpath('//*[@bh:rat-boundary]', namespaces=NSMAP):
+            trfm = context_transform(el)
+            el_bbox = simpletransform.computeBBox([el], trfm)
+            bbox = simpletransform.boxunion(bbox, el_bbox)
+
+        if bbox is None:
+            bbox = self.get_page_boundary()
+        return bounds(bbox)
 
     def effect(self):
-        bbox = self.getBounds()
+        bbox = self.get_boundary()
         for el in self.selected.values():
             randomize_position(el, bbox)
 

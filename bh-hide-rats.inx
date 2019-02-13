@@ -9,7 +9,9 @@
       <_param name="verbose" type="boolean" _gui-text="Verbose output: note defs which were not found in the symbol library."></_param>
     </page>
     <page name="Help" _gui-text="Help">
-      <_param name="texthelp" type="description">Randomize the position of selected elements.</_param>
+      <_param name="texthelp" type="description">Randomize the position of selected elements.
+
+The area that the elements are distributed to is taken to be the bounding box of all elements with the bh:rat-boundary attribute set.  (Please not that clipping is not taken into account when computing the bounding box.)</_param>
     </page>
   </param>
   <effect>
