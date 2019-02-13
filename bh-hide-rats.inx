@@ -11,7 +11,9 @@
     <page name="Help" _gui-text="Help">
       <_param name="texthelp" type="description">Randomize the position of selected elements.
 
-The area that the elements are distributed to is taken to be the bounding box of all elements with the bh:rat-boundary attribute set.  (Please not that clipping is not taken into account when computing the bounding box.)</_param>
+The area that the elements are distributed to is taken to be the bounding box of all elements with the bh:rat-boundary attribute set.  (Please not that clipping is not taken into account when computing the bounding box.)
+
+Any elements tag with attribute bh:rat-exclusion define areas where rats will not be placed. (This is done on a best-effort basis, and is not guaranteed.)</_param>
     </page>
   </param>
   <effect>

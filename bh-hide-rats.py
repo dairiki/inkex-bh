@@ -5,6 +5,7 @@
 '''
 # standard library
 import collections
+from itertools import count
 import random
 # local library
 import inkex
@@ -39,6 +40,12 @@ class bounds(_bounds):
     def height(self):
         return self.ymax - self.ymin
 
+    def overlaps(self, other):
+        return (self.xmin <= other.xmax
+                and self.ymin <= other.ymax
+                and other.xmin <= self.xmax
+                and other.ymin <= self.ymax)
+
     def __repr__(self):
         return tuple.__repr__(self)
 
@@ -56,20 +63,29 @@ def context_transform(el, map=[[1, 0, 0], [0, 1, 0]]):
     return map
 
 
-def randomize_position(el, bbox):
+def randomize_position(el, bbox, exclusions, max_tries=32):
     """ Randomize the position of element within bounding box.
     """
-    bbox = bounds(bbox)
-
     # Work in page coordinates
     local_trfm = context_transform(el)
     el_bbox = bounds(simpletransform.computeBBox([el], local_trfm))
 
-    # Compute random position offset
-    x = random.uniform(bbox.xmin, max(bbox.xmax - el_bbox.width, bbox.xmin))
-    y = random.uniform(bbox.ymin, max(bbox.ymax - el_bbox.height, bbox.ymin))
-    offset = [x - el_bbox.xmin, y - el_bbox.ymin]
+    xmax = max(bbox.xmax - el_bbox.width, bbox.xmin)
+    ymax = max(bbox.ymax - el_bbox.height, bbox.ymin)
+    for n in count(1):
+        # Compute random position offset
+        x = random.uniform(bbox.xmin, xmax)
+        y = random.uniform(bbox.ymin, ymax)
+        new_bbox = bounds(x, x + el_bbox.width, y, y + el_bbox.height)
+        if not any(new_bbox.overlaps(excl) for excl in exclusions):
+            break
+        elif n > max_tries:
+            inkex.errormsg(
+                "Can not find non-excluded location for rat after %d tries. "
+                "Giving up." % n)
+            break
 
+    offset = [x - el_bbox.xmin, y - el_bbox.ymin]
     # Transform back to element coordinates
     local_trfm_inv = simpletransform.invertTransform(local_trfm)
     simpletransform.applyTransformToPoint(local_trfm_inv, offset)
@@ -102,10 +118,20 @@ class HideRats(inkex.Effect):
             bbox = self.get_page_boundary()
         return bounds(bbox)
 
+    def get_exclusions(self):
+        document = self.document
+        exclusions = []
+        for el in document.xpath('//*[@bh:rat-exclusion]', namespaces=NSMAP):
+            trfm = context_transform(el)
+            bbox = simpletransform.computeBBox([el], trfm)
+            exclusions.append(bounds(bbox))
+        return exclusions
+
     def effect(self):
         bbox = self.get_boundary()
+        exclusions = self.get_exclusions()
         for el in self.selected.values():
-            randomize_position(el, bbox)
+            randomize_position(el, bbox, exclusions)
 
 
 if __name__ == '__main__':
