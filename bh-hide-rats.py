@@ -19,10 +19,6 @@ NSMAP = inkex.NSS.copy()
 NSMAP['bh'] = 'http://dairiki.org/barnhunt/inkscape-extensions'
 
 
-def debug(message):
-    inkex.errormsg(message)
-
-
 _BBoxBase = collections.namedtuple('_bounds', ['xmin', 'xmax', 'ymin', 'ymax'])
 
 
@@ -50,22 +46,6 @@ class BBox(_BBoxBase):
         return tuple.__repr__(self)
 
 
-def context_transform(el, map=[[1, 0, 0], [0, 1, 0]]):
-    """ Get the outer transform in effect for element.
-
-    This includes the transforms of all parent elements, but not the transform
-    of the element itself.
-
-    """
-    parent = el.getparent()
-    if parent is not None:
-        map = simpletransform.composeParents(parent, map)
-    return map
-
-
-E = [[1, 0, 0], [0, 1, 0]]
-
-
 class reify(object):
     def __init__(self, wrapped):
         self.wrapped = wrapped
@@ -79,6 +59,7 @@ class reify(object):
         return val
 
 
+# FIXME: rename this
 class Rat(object):
     """ Helper for element placement """
     def __init__(self, element):
@@ -87,7 +68,7 @@ class Rat(object):
     @reify
     def parent_transform(self):
         parent = self.element.getparent()
-        mat = E
+        mat = [[1, 0, 0], [0, 1, 0]]
         while parent is not None:
             trans = parent.get('transform')
             if trans:
@@ -101,19 +82,16 @@ class Rat(object):
         return BBox(simpletransform.computeBBox([self.element],
                                                 self.parent_transform))
 
-    def _clear_cache(self):
-        del self.parent_transform
-        del self.bbox
 
-    @property
-    def width(self):
-        bbox = self.bbox
-        return bbox.xmax - bbox.xmin
+    # @property
+    # def width(self):
+    #     bbox = self.bbox
+    #     return bbox.xmax - bbox.xmin
 
-    @property
-    def height(self):
-        bbox = self.bbox
-        return bbox.ymax - bbox.ymin
+    # @property
+    # def height(self):
+    #     bbox = self.bbox
+    #     return bbox.ymax - bbox.ymin
 
     @property
     def position(self):
@@ -129,7 +107,7 @@ class Rat(object):
         local_trfm = [[1, 0, offset[0]],
                       [0, 1, offset[1]]]
         simpletransform.applyTransformToNode(local_trfm, self.element)
-        self._clear_cache()
+        del self.bbox           # delete cached value
 
 
 def random_position(bbox, bounds, exclusions=[], max_tries=32):
@@ -191,9 +169,7 @@ class HideRats(inkex.Effect):
         document = self.document
         bbox = None
         for el in document.xpath('//*[@bh:rat-boundary]', namespaces=NSMAP):
-            trfm = context_transform(el)
-            el_bbox = simpletransform.computeBBox([el], trfm)
-            bbox = simpletransform.boxunion(bbox, el_bbox)
+            bbox = simpletransform.boxunion(bbox, Rat(el).bbox)
 
         if bbox is None:
             bbox = self.get_page_boundary()
