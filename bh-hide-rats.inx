@@ -6,7 +6,13 @@
   <dependency type="executable" location="extensions">inkex.py</dependency>
   <param name="tab" type="notebook">
     <page name="Options" _gui-text="Options">
-      <_param name="verbose" type="boolean" _gui-text="Verbose output: note defs which were not found in the symbol library."></_param>
+      <_param name="restart"
+              type="boolean"
+              _gui-text="Restart. Delete exisiting auto-generated exclude regions"
+              >false</_param>
+      <_param name="verbose"
+              type="boolean"
+              _gui-text="Verbose output: note defs which were not found in the symbol library."></_param>
     </page>
     <page name="Help" _gui-text="Help">
       <_param name="texthelp" type="description">Randomize the position of selected elements.
