@@ -175,10 +175,6 @@ class Element(object):
         self.element = element
 
     @property
-    def xml_id(self):
-        return self.element.get('id')
-
-    @property
     def transform(self):
         return Transform(self.element.get('transform'))
 
@@ -290,29 +286,13 @@ class RatGuide(object):
             el.getparent().remove(el)
         self._populate_guide_layer()
 
-    def add_exclusion(self, bbox, src_id=None):
+    def add_exclusion(self, bbox):
         rect = make_rect(bbox)
         rect.attrib.update({
             BH_RAT_GUIDE_MODE: 'exclusion',
             'style': self.EXCLUSION_STYLE,
             })
-        if src_id is not None:
-            href = '#%s' % src_id
-            for el in self.guide_layer.xpath(".//*[@xlink:href=$href]",
-                                             href=href,
-                                             namespaces=NSMAP):
-                del el.attrib[XLINK_HREF]
-            rect.set(XLINK_HREF, href)
         self.guide_layer.append(rect)
-
-    def exclusion_for_src(self, src_id):
-        if src_id is None:
-            return None
-        href = '#%s' % src_id
-        for el in self.guide_layer.xpath(".//*[@xlink:href=$href]",
-                                         href=href,
-                                         namespaces=NSMAP):
-            return Element(el).bbox
 
     def get_boundary(self):
         return self._compute_boundary(
@@ -438,22 +418,14 @@ class HideRats(inkex.Effect):
             # FIXME:
             guide_layer.reset()
 
-        rats = [Element(el) for el in self.selected.values()]
-
         bounds = guide_layer.get_boundary()
         exclusions = guide_layer.get_exclusions()
         rat_placer = RatPlacer(bounds, exclusions)
 
-        for rat in rats:
-            # Add an exclusion rectangle for the current rat position
-            prev_exclusion = guide_layer.exclusion_for_src(rat.xml_id)
-            if not prev_exclusion or not prev_exclusion.overlaps(rat.bbox):
-                guide_layer.add_exclusion(rat.bbox)
-                rat_placer.add_exclusion(rat.bbox)
-
-        for rat in rats:
+        for el in self.selected.values():
+            rat = Element(el)
             rat_placer.place_rat(rat)
-            guide_layer.add_exclusion(rat.bbox, rat.xml_id)
+            guide_layer.add_exclusion(rat.bbox)
             rat_placer.add_exclusion(rat.bbox)
 
 
