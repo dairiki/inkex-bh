@@ -224,12 +224,13 @@ class Element(object):
 
 class RatGuide(object):
     BOUNDARY_STYLE = (
-        'fill:#00ff00;fill-opacity:0.02;'
-        'stroke:#00ab00:stroke-width:2.5;'
+        'fill:none;'
+        'stroke:#00ff00;stroke-width:2;stroke-dasharray:4,8;'
         'stroke-linecap:round;stroke-miterlimit:4')
     EXCLUSION_STYLE = (
-        'fill:#c68c8c;fill-opacity:0.25;'
-        'stroke:#ff0000:stroke-width:1;'
+        'fill:#c68c8c;fill-opacity:0.125;'
+        'stroke:#ff0000;stroke-width:1;stroke-opacity:0.5;'
+        'stroke-dasharray:2,6;'
         'stroke-linecap:round;stroke-miterlimit:4')
 
     def __init__(self, document, page_bbox):
