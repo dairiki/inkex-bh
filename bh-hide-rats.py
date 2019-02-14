@@ -26,7 +26,7 @@ SODIPODI_INSENSTIVE = inkex.addNS('insensitive', 'sodipodi')
 XLINK_HREF = inkex.addNS('href', 'xlink')
 
 BH_NS = 'http://dairiki.org/barnhunt/inkscape-extensions'
-BH_RAT_EXCLUSION = etree.QName(BH_NS, 'rat-exclusion')
+BH_RAT_PLACEMENT = etree.QName(BH_NS, 'rat-placement')
 BH_RAT_GUIDE_MODE = etree.QName(BH_NS, 'rat-guide-mode')
 
 NSMAP = inkex.NSS.copy()
@@ -272,7 +272,8 @@ class RatGuide(object):
 
     def _get_boundary(self):
         return self._compute_boundary(
-            self.document.xpath('//*[@bh:rat-boundary]', namespaces=NSMAP))
+            self.document.xpath("//*[@bh:rat-placement='boundary']",
+                                namespaces=NSMAP))
 
     def _compute_boundary(self, elems):
         bboxes = [Element(el).bbox for el in elems]
@@ -351,12 +352,12 @@ def find_exclusions(elem, transform=None):
         cond = ""
 
     path = '|'.join(base + s + cond for s in [
-        "*[@bh:rat-exclusion]",
+        "*[@bh:rat-placement='exclude']",
         "svg:use[starts-with(@xlink:href,'#')]",
         ])
 
     for el in elem.xpath(path, namespaces=NSMAP):
-        if el.get(BH_RAT_EXCLUSION) is not None:
+        if el.get(BH_RAT_PLACEMENT) == 'exclude':
             exclusions.append(Element(el).compute_bbox(transform))
         else:
             assert el.tag == SVG_USE
