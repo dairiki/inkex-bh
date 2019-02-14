@@ -13,8 +13,8 @@ from lxml import etree
 import inkex
 import simpletransform
 
-
 inkex.localize()
+_ = _                           # noqa: F821
 
 SVG_SVG = inkex.addNS('svg', 'svg')
 SVG_G = inkex.addNS('g', 'svg')
@@ -175,6 +175,10 @@ class Element(object):
         self.element = element
 
     @property
+    def xml_id(self):
+        return self.element.get('id')
+
+    @property
     def transform(self):
         return Transform(self.element.get('transform'))
 
@@ -219,6 +223,15 @@ class Element(object):
 
 
 class RatGuide(object):
+    BOUNDARY_STYLE = (
+        'fill:#00ff00;fill-opacity:0.02;'
+        'stroke:#00ab00:stroke-width:2.5;'
+        'stroke-linecap:round;stroke-miterlimit:4')
+    EXCLUSION_STYLE = (
+        'fill:#c68c8c;fill-opacity:0.25;'
+        'stroke:#ff0000:stroke-width:1;'
+        'stroke-linecap:round;stroke-miterlimit:4')
+
     def __init__(self, document, page_bbox):
         self.document = document
         self.page_bbox = page_bbox
@@ -247,7 +260,7 @@ class RatGuide(object):
         bounds = make_rect(self._get_boundary())
         bounds.attrib.update({
             BH_RAT_GUIDE_MODE: 'boundary',
-            'style': 'fill:#00ff00;fill-opacity:0.02;stroke:#00ab00:stroke-width:2.5;stroke-linecap:round;stroke-miterlimit:4',
+            'style': self.BOUNDARY_STYLE,
             })
         self.guide_layer.insert(0, bounds)
 
@@ -284,11 +297,25 @@ class RatGuide(object):
         rect = make_rect(bbox)
         rect.attrib.update({
             BH_RAT_GUIDE_MODE: 'exclusion',
-            'style': 'fill:#c68c8c;fill-opacity:0.25;stroke:#ff0000:stroke-width:1;stroke-linecap:round;stroke-miterlimit:4',
+            'style': self.EXCLUSION_STYLE,
             })
         if src_id is not None:
-            rect.set(XLINK_HREF, '#%s' % src_id)
+            href = '#%s' % src_id
+            for el in self.guide_layer.xpath(".//*[@xlink:href=$href]",
+                                             href=href,
+                                             namespaces=NSMAP):
+                del el.attrib[XLINK_HREF]
+            rect.set(XLINK_HREF, href)
         self.guide_layer.append(rect)
+
+    def exclusion_for_src(self, src_id):
+        if src_id is None:
+            return None
+        href = '#%s' % src_id
+        for el in self.guide_layer.xpath(".//*[@xlink:href=$href]",
+                                         href=href,
+                                         namespaces=NSMAP):
+            return Element(el).bbox
 
     def get_boundary(self):
         return self._compute_boundary(
@@ -305,32 +332,16 @@ class RatGuide(object):
         return [Element(excl).bbox for excl in res]
 
 
-def random_position(dim, bounds, exclusions=[], max_tries=128):
-    """Find a random new position for element.
-
-    The element has dimensions given by DIM.  The new position will
-    be contained within BOUNDS, if possible.  Reasonable efforts will
-    be made to avoid placing the element such that it overlaps with
-    any bboxes listed in EXCLUSIONS.
-
-    """
-    xmax = max(bounds.xmax - dim.width, bounds.xmin)
-    ymax = max(bounds.ymax - dim.height, bounds.ymin)
-    for n in count(1):
-        # Compute random position offset
-        x = random.uniform(bounds.xmin, xmax)
-        y = random.uniform(bounds.ymin, ymax)
-        new_bbox = BoundingBox(x, x + dim.width, y, y + dim.height)
-        if not any(new_bbox.overlaps(excl) for excl in exclusions):
-            break
-        elif n > max_tries:
-            inkex.errormsg(
-                "Can not find non-excluded location for rat after %d tries. "
-                "Giving up." % n)
-            break
-    return x, y
+# FIXME: move this
+def make_rect(bbox):
+    return inkex.etree.Element(SVG_RECT,
+                               x="%f" % bbox.xmin,
+                               y="%f" % bbox.ymin,
+                               width="%f" % bbox.width,
+                               height="%f" % bbox.height)
 
 
+# FIXME: move this
 def find_exclusions(elem, transform=None):
     exclusions = []
 
@@ -362,24 +373,53 @@ def find_exclusions(elem, transform=None):
     return exclusions
 
 
-def make_rect(bbox):
-    return inkex.etree.Element(SVG_RECT,
-                               x="%f" % bbox.xmin,
-                               y="%f" % bbox.ymin,
-                               width="%f" % bbox.width,
-                               height="%f" % bbox.height)
+class RatPlacer(object):
+    def __init__(self, boundary, exclusions=None):
+        if exclusions is None:
+            exclusions = []
+        self.boundary = boundary
+        self.exclusions = exclusions
 
+    def add_exclusion(self, bbox):
+        self.exclusions.append(bbox)
 
-def make_auto_exclusion(bbox):
-    elem = make_rect(bbox)
-    elem.attrib.update({
-        # style='display:none;fill:#9bff00;stroke:#ff0000ff;stroke-width:1px',
-        'style': 'fill:#b3c895;fill-opacity:0.25;stroke:#ff0000;stroke-width:1px',
-        BH_RAT_EXCLUSION: 'auto',
-        # "lock" the exclusion
-        SODIPODI_INSENSTIVE: 'true',
-        })
-    return elem
+    def place_rat(self, rat):
+        if not isinstance(rat, Element):
+            raise TypeError("rat must be an Element")
+
+        newpos = self.random_position(rat.bbox.dimension)
+        rat.position = newpos
+
+    def intersects_excluded(self, bbox):
+        return any(bbox.overlaps(excl) for excl in self.exclusions)
+
+    def random_position(self, rat_bbox, max_tries=128):
+        """Find a random new position for element.
+
+        The element has dimensions given by DIMENSION.  The new position will
+        be contained within BOUNDARY, if possible.  Reasonable efforts will
+        be made to avoid placing the element such that it overlaps with
+        any bboxes listed in EXCLUSIONS.
+
+        """
+        xmin, xmax, ymin, ymax = self.boundary
+        xmax = max(xmax - rat_bbox.width, xmin)
+        ymax = max(ymax - rat_bbox.height, ymin)
+
+        for n in count(1):
+            # Compute random position offset
+            x = random.uniform(xmin, xmax)
+            y = random.uniform(ymin, ymax)
+            new_bbox = BoundingBox(x, x + rat_bbox.width,
+                                   y, y + rat_bbox.height)
+            if not self.intersects_excluded(new_bbox):
+                break
+            elif n >= max_tries:
+                inkex.errormsg(
+                    "Can not find non-excluded location for rat after %d "
+                    "tries. Giving up." % n)
+                break
+        return x, y
 
 
 class HideRats(inkex.Effect):
@@ -397,28 +437,27 @@ class HideRats(inkex.Effect):
 
     def effect(self):
         guide_layer = RatGuide(self.document, self.get_page_boundary())
-
         if self.options.restart:
             # FIXME:
             guide_layer.reset()
 
+        rats = [Element(el) for el in self.selected.values()]
+
         bounds = guide_layer.get_boundary()
         exclusions = guide_layer.get_exclusions()
+        rat_placer = RatPlacer(bounds, exclusions)
 
-        rats = [Element(el) for el in self.selected.values()]
         for rat in rats:
             # Add an exclusion rectangle for the current rat position
-            if not any(rat.bbox.overlaps(excl) for excl in exclusions):
-                # FIXME: link to original rat id
+            prev_exclusion = guide_layer.exclusion_for_src(rat.xml_id)
+            if not prev_exclusion or not prev_exclusion.overlaps(rat.bbox):
                 guide_layer.add_exclusion(rat.bbox)
-                # FIXME: shouldn't need this
-                exclusions.append(rat.bbox)
+                rat_placer.add_exclusion(rat.bbox)
 
         for rat in rats:
-            newpos = random_position(rat.bbox.dimension, bounds, exclusions)
-            rat.position = newpos
-            guide_layer.add_exclusion(rat.bbox)
-            exclusions.append(rat.bbox)
+            rat_placer.place_rat(rat)
+            guide_layer.add_exclusion(rat.bbox, rat.xml_id)
+            rat_placer.add_exclusion(rat.bbox)
 
 
 if __name__ == '__main__':
