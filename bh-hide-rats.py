@@ -86,7 +86,7 @@ class BoundingBox(namedtuple('BoundingBox', ['xmin', 'xmax', 'ymin', 'ymax'])):
     def lr(self):
         return Point(x=self.xmax, y=self.ymax)
 
-    def __sum__(self, other):
+    def union(self, other):
         if not isinstance(other, BoundingBox):
             raise TypeError()
         return BoundingBox(simpletransform.boxunion(self, other))
@@ -274,16 +274,11 @@ class RatGuide(object):
             self.document.xpath('//*[@bh:rat-boundary]', namespaces=NSMAP))
 
     def _compute_boundary(self, elems):
-        bbox = None
-        for el in elems:
-            boundary = Element(el)
-            if bbox is None:
-                bbox = boundary.bbox
-            else:
-                bbox += boundary.bbox
-        if bbox is None:
-            bbox = self.page_bbox
-        return bbox
+        bboxes = [Element(el).bbox for el in elems]
+        if bboxes:
+            return reduce(BoundingBox.union, bboxes)
+        else:
+            return self.page_bbox
 
     def reset(self):
         guide_layer = self.guide_layer
