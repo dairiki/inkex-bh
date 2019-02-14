@@ -249,7 +249,7 @@ class RatGuide(object):
             BH_RAT_GUIDE_MODE: 'boundary',
             'style': 'fill:#00ff00;fill-opacity:0.02;stroke:#00ab00:stroke-width:2.5;stroke-linecap:round;stroke-miterlimit:4',
             })
-        self.guide_layer.append(bounds)
+        self.guide_layer.insert(0, bounds)
 
         # Find visible exclusion elements and draw their bounding boxes
         for bbox in find_exclusions(self.document.getroot()):
@@ -274,8 +274,10 @@ class RatGuide(object):
 
     def reset(self):
         guide_layer = self.guide_layer
-        while len(guide_layer) > 0:
-            guide_layer.remove(guide_layer[0])
+        # delete all auto-created elements
+        for el in guide_layer.xpath(".//*[@bh:rat-guide-mode]",
+                                    namespaces=NSMAP):
+            el.getparent().remove(el)
         self._populate_guide_layer()
 
     def add_exclusion(self, bbox, src_id=None):
@@ -294,8 +296,12 @@ class RatGuide(object):
                                    namespaces=NSMAP))
 
     def get_exclusions(self):
-        res = self.guide_layer.xpath(".//*[@bh:rat-guide-mode='exclusion']",
-                                     namespaces=NSMAP)
+        res = self.guide_layer.xpath(
+            ".//*[@bh:rat-guide-mode='exclusion']"
+            # Treat top-level elements created in the guide layer by the user
+            # as exclusions
+            " | ./*[not(@bh:rat-guide-mode)]",
+            namespaces=NSMAP)
         return [Element(excl).bbox for excl in res]
 
 
