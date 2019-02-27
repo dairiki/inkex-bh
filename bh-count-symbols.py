@@ -26,6 +26,7 @@ XLINK_HREF = inkex.addNS('href', 'xlink')
 BH_NS = 'http://dairiki.org/barnhunt/inkscape-extensions'
 BH_RAT_PLACEMENT = etree.QName(BH_NS, 'rat-placement')
 BH_RAT_GUIDE_MODE = etree.QName(BH_NS, 'rat-guide-mode')
+BH_COUNT_AS = etree.QName(BH_NS, 'count-as')
 
 NSMAP = inkex.NSS.copy()
 NSMAP['bh'] = BH_NS
@@ -63,7 +64,9 @@ class SymbolReferenceCounts(object):
 
     def _count_refs(self, elem):
         if elem.tag == SVG_SYMBOL:
-            symbol = elem.get('id')
+            symbol = elem.get(BH_COUNT_AS)
+            if symbol is None:
+                symbol = '#%s' % elem.get('id')
             return Counter((symbol,))
         else:
             use_refs = elem.xpath(
