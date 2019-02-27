@@ -17,7 +17,7 @@
 This counts visible symbols (i.e. those not on hidden layers.)</_param>
     </page>
   </param>
-  <effect>
+  <effect needs-live-preview="false">
     <object-type>all</object-type>
     <effects-menu>
       <submenu _name="Barn Hunt"/>

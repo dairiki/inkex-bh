@@ -12,19 +12,9 @@ import inkex
 inkex.localize()
 _ = _                           # noqa: F821
 
-SVG_SVG = inkex.addNS('svg', 'svg')
-SVG_G = inkex.addNS('g', 'svg')
-SVG_USE = inkex.addNS('use', 'svg')
-SVG_RECT = inkex.addNS('rect', 'svg')
 SVG_SYMBOL = inkex.addNS('symbol', 'svg')
-INKSCAPE_GROUPMODE = inkex.addNS('groupmode', 'inkscape')
-INKSCAPE_LABEL = inkex.addNS('label', 'inkscape')
-SODIPODI_INSENSTIVE = inkex.addNS('insensitive', 'sodipodi')
-XLINK_HREF = inkex.addNS('href', 'xlink')
 
 BH_NS = 'http://dairiki.org/barnhunt/inkscape-extensions'
-BH_RAT_PLACEMENT = etree.QName(BH_NS, 'rat-placement')
-BH_RAT_GUIDE_MODE = etree.QName(BH_NS, 'rat-guide-mode')
 BH_COUNT_AS = etree.QName(BH_NS, 'count-as')
 
 NSMAP = inkex.NSS.copy()
@@ -45,7 +35,9 @@ class SymbolCounter(object):
 
     def _get_elem_by_id(self, xml_id):
         elems = self.document.xpath('//*[@id=$xml_id]', xml_id=xml_id)
-        # FIXME: warn if len(elems) != 1
+        if len(elems) != 1:
+            inkex.errormsg(_("WARNING: found %d elements for id %r") % (
+                len(elems), xml_id))
         return elems[0] if elems else None
 
     def _count_symbols(self, xml_id):
