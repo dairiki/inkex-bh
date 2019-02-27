@@ -3,8 +3,7 @@
 ''' Count symbol usage
 
 '''
-from collections import Counter, Mapping
-
+from collections import Counter
 
 from lxml import etree
 
@@ -32,70 +31,57 @@ NSMAP = inkex.NSS.copy()
 NSMAP['bh'] = BH_NS
 
 
-class IdIndex(Mapping):
+class SymbolCounter(object):
     def __init__(self, document):
         self.document = document
-
-    def __getitem__(self, xml_id):
-        elems = self.document.xpath('//*[@id=$xml_id]', xml_id=xml_id)
-        # FIXME: warn if len(elems) > 1
-        if len(elems) == 0:
-            raise KeyError(xml_id)
-        return elems[0]
-
-    def __iter__(self):
-        return iter(set(self.document.xpath('//@id')))
-
-    def __len__(self):
-        return len(set(self.document.xpath('//@id')))
-
-
-class SymbolReferenceCounts(object):
-    def __init__(self, document):
-        self.document = document
-        self.by_id = IdIndex(document)
         self.counts = {}
 
-    def __getitem__(self, xml_id):
+    def symbol_counts(self, href):
+        assert href.startswith('#') and len(href) > 1
+        xml_id = href[1:]
         if xml_id not in self.counts:
-            elem = self.by_id[xml_id]
-            self.counts[xml_id] = self._count_refs(elem)
+            self.counts[xml_id] = self._count_symbols(xml_id)
         return self.counts[xml_id]
 
-    def _count_refs(self, elem):
-        if elem.tag == SVG_SYMBOL:
-            symbol = elem.get(BH_COUNT_AS)
-            if symbol is None:
-                symbol = '#%s' % elem.get('id')
+    def _get_elem_by_id(self, xml_id):
+        elems = self.document.xpath('//*[@id=$xml_id]', xml_id=xml_id)
+        # FIXME: warn if len(elems) != 1
+        return elems[0] if elems else None
+
+    def _count_symbols(self, xml_id):
+        elem = self._get_elem_by_id(xml_id)
+        if elem is None:
+            return Counter()
+        elif elem.tag == SVG_SYMBOL:
+            symbol = elem.get(BH_COUNT_AS, '#%s' % xml_id)
             return Counter((symbol,))
         else:
-            use_refs = elem.xpath(
-                "descendant::svg:use/@xlink:href[starts-with(.,'#')]",
-                namespaces=NSMAP)
-            return sum((self[href[1:]] for href in use_refs),
-                       Counter())
+            return sum(
+                map(self.symbol_counts, elem.xpath(
+                    "descendant-or-self::svg:use"
+                    "/@xlink:href[starts-with(.,'#')]",
+                    namespaces=NSMAP)),
+                Counter())
 
 
 class CountSymbols(inkex.Effect):
     def __init__(self):
         inkex.Effect.__init__(self)
         self.OptionParser.add_option("--tab")
+        self.OptionParser.add_option("--include-hidden", type="inkbool")
 
     def effect(self):
         document = self.document
-        symbol_counts = SymbolReferenceCounts(document)
 
-        use_refs = document.xpath(
-            "//svg:use"
-            "[not("
-            "  ancestor-or-self::svg:symbol"
-            "  | ancestor::*[contains(@style,'display:none')]"
-            ")]"
-            "/@xlink:href[starts-with(.,'#')]",
-            namespaces=NSMAP)
+        hrefs = ("//svg:use[not(ancestor-or-self::svg:symbol)]"
+                 "/@xlink:href[starts-with(.,'#')]")
+        if not self.options.include_hidden:
+            hrefs += "[not(ancestor::*[contains(@style,'display:none')])]"
 
-        counts = sum((symbol_counts[href[1:]] for href in use_refs),
-                     Counter())
+        symbol_counts = SymbolCounter(document).symbol_counts
+        counts = sum(
+            map(symbol_counts, document.xpath(hrefs, namespaces=NSMAP)),
+            Counter())
         for id_, count in counts.most_common():
             inkex.errormsg("{1:4}: {0}".format(id_, count))
 
