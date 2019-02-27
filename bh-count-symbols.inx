@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <_name>Count Symbols</_name>
+  <id>org.dairiki.bh.count-symbols</id>
+  <dependency type="executable" location="extensions">bh-count-symbols.py</dependency>
+  <dependency type="executable" location="extensions">inkex.py</dependency>
+  <param name="tab" type="notebook">
+    <!--
+    <page name="Options" _gui-text="Options">
+      <_param name="restart"
+              type="boolean"
+              _gui-text="Restart. Delete exisiting auto-generated exclude regions"
+              >false</_param>
+      <_param name="verbose"
+              type="boolean"
+              _gui-text="Verbose output: note defs which were not found in the symbol library."></_param>
+    </page>
+    -->
+    <page name="Help" _gui-text="Help">
+      <_param name="texthelp" type="description">Count symbols (e.g. bales).
+
+This counts visible symbols (i.e. those not on hidden layers.)</_param>
+    </page>
+  </param>
+  <effect>
+    <object-type>all</object-type>
+    <effects-menu>
+      <submenu _name="Barn Hunt"/>
+    </effects-menu>
+  </effect>
+  <script>
+    <command reldir="extensions" interpreter="python">bh-count-symbols.py</command>
+  </script>
+</inkscape-extension>
