@@ -79,4 +79,4 @@ class CountSymbols(inkex.Effect):
 
 
 if __name__ == '__main__':
-    CountSymbols().affect()
+    CountSymbols().affect(output=False)
