@@ -15,14 +15,21 @@
               _gui-text="Background color">#ffffff</_param>
       <_param name="background-opacity" type="float" min="0.0" max="1.0"
               _gui-text="Background opacity">1.0</_param>
+      <_param name="optipng-level" type="int" min="-1" max="7"
+              _gui-text="Optipng optimization level (-1 to disable)">2</_param>
+      <_param name="verbose" type="boolean"
+              _gui-text="Verbose output"></_param>
     </page>
     <page name="Help" _gui-text="Help">
       <_param name="texthelp" type="description">Export inset image.
 
-The bounding box of any selected paths defines the boundary of the
-inset.  The inset is exported as a PNG image, then the image is
-inserted on top of the drawing.  (You probably want to cut-paste the
-resulting image onto a different layer.)
+If a single element is selected, and PNG image is created from that
+element.  If multiple elements are selected, the bounding box of those
+elements is used to define the image extent.
+
+The resulting image is inserted on top of the drawing, scaled by SCALE,
+and with resolution set by DPI.  You will likely want to cut/paste it
+into a layer of your choosing.
 
 </_param>
     </page>
