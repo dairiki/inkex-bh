@@ -23,13 +23,17 @@
     <page name="Help" _gui-text="Help">
       <_param name="texthelp" type="description">Export inset image.
 
-If a single element is selected, and PNG image is created from that
-element.  If multiple elements are selected, the bounding box of those
-elements is used to define the image extent.
+A single element should be selected when this extension is run.
 
-The resulting image is inserted on top of the drawing, scaled by SCALE,
-and with resolution set by DPI.  You will likely want to cut/paste it
-into a layer of your choosing.
+If the selected element is an image created by this extension, then
+that image will be updated, adjusting layer visibility so that the same
+layers will be visible that were showing when the image was originally
+created.
+
+Otherwise the selected element defines the area that is exported to a
+new PNG image. The resulting image is inserted on top of the drawing,
+scaled by SCALE, and with resolution set by DPI.  You will likely want
+to cut/paste it into a layer of your choosing.
 
 </_param>
     </page>
