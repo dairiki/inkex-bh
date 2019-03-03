@@ -5,7 +5,6 @@
 '''
 import base64
 from contextlib import contextmanager
-import copy
 import os
 import subprocess
 import struct
@@ -63,34 +62,45 @@ class Style(dict):
         return ';'.join(map("{0[0]}:{0[1]}".format, self.items()))
 
 
-def get_visible_layer_ids(tree):
-    def is_visible(layer):
-        style = Style(layer.get('style'))
-        return style.get('display') != 'none'
+class TemporaryVisibility(object):
+    def __init__(self):
+        self.saved = []
 
-    ids = set()
-    for layer in tree.xpath("//svg:g[@id][@inkscape:groupmode='layer']",
-                            namespaces=NSMAP):
-        lineage = layer.xpath(
-            "ancestor-or-self::svg:g[@inkscape:groupmode='layer']",
-            namespaces=NSMAP)
-        if all(is_visible(lyr) for lyr in lineage):
-            ids.add(layer.get('id'))
-    return ids
+    def __call__(self, elem, visibility):
+        elem_style = elem.get('style')
+        if elem_style or not visibility:
+            self.saved.append((elem, elem_style))
+            style = Style(elem_style)
+            style['display'] = 'inline' if visibility else 'none'
+            elem.set('style', str(style))
+
+    def restore(self):
+        for elem, style in reversed(self.saved):
+            if style is None:
+                elem.attrib.pop('style', None)
+            else:
+                elem.set('style', style)
+        self.saved = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, typ, value, tb):
+        self.restore()
 
 
-def remove_element_by_id(tree, elem_id):
-    for elem in tree.xpath('//*[@id=$elem_id]', elem_id=elem_id):
-        elem.getparent().remove(elem)
+def iter_layers(tree):
+    return tree.xpath("//svg:g[@inkscape:groupmode='layer']",
+                      namespaces=NSMAP)
 
 
-def adjust_layer_visibility(tree, visible_layer_ids):
-    for layer in tree.xpath("//svg:g[@id][@inkscape:groupmode='layer']",
-                            namespaces=NSMAP):
-        style = Style(layer.get('style'))
-        is_visible = layer.get('id') in visible_layer_ids
-        style['display'] = 'inline' if is_visible else 'none'
-        layer.set('style', str(style))
+def is_visible(elem):
+    while elem is not None:
+        style = Style(elem.get('style'))
+        if style.get('display') == 'none':
+            return False
+        elem = elem.getparent()
+    return True
 
 
 class CreateInset(inkex.Effect):
@@ -123,12 +133,14 @@ class CreateInset(inkex.Effect):
             if self.options.verbose:
                 inkex.errormsg(output)
 
-    def export_png(self, tree, export_id):
+    def export_png(self, export_id, document=None):
         opt = self.options
+        if document is None:
+            document = self.document
 
         with temp_fn(suffix=".svg", prefix="bh-") as infn:
             with open(infn, "w") as fp:
-                tree.write(fp)
+                document.write(fp)
             with temp_fn(suffix=".png", prefix="bh-") as outfn:
                 self.run([
                     'inkscape',
@@ -151,54 +163,59 @@ class CreateInset(inkex.Effect):
         if len(self.selected) != 1:
             inkex.errormsg(_("You must select exactly one object."))
             exit(1)
+        selected_id, selected_elem = next(iter(self.selected.items()))
 
-        id_, elem = next(iter(self.selected.items()))
-        if elem.tag == SVG_IMAGE and elem.get(BH_INSET_EXPORT_ID):
-            # Previously created inset image was selected.
-            # Attempt to re-create/update the image.
-            image_elem = elem
-            export_id = elem.get(BH_INSET_EXPORT_ID)
-            visible_layer_ids = set(
-                elem.get(BH_INSET_VISIBLE_LAYERS, '').split())
-            tree = copy.deepcopy(self.document)
-            remove_element_by_id(tree, id_)  # remove image
-            adjust_layer_visibility(tree, visible_layer_ids)
-        else:
+        inset_selected = (selected_elem.tag == SVG_IMAGE
+                          and selected_elem.get(BH_INSET_EXPORT_ID))
+        if not inset_selected:
             # Selected element was not an inset image.
             # Create PNG from selected element
-            image_elem = None
-            export_id = id_
-            tree = self.document
-            visible_layer_ids = get_visible_layer_ids(tree)
+            image = None
+            export_id = selected_id
+            visible_layer_ids = set(
+                layer.get('id')
+                for layer in iter_layers(self.document)
+                if is_visible(layer) and layer.get('id') is not None)
+            png_data = self.export_png(export_id)
+        else:
+            # Previously created inset image was selected.
+            # Attempt to re-create/update the image.
+            image = selected_elem
+            export_id = image.get(BH_INSET_EXPORT_ID)
+            visible_layer_ids = set(
+                image.get(BH_INSET_VISIBLE_LAYERS, '').split())
+            with TemporaryVisibility() as set_visibility:
+                set_visibility(image, False)  # hide inset image
+                for layer in iter_layers(self.document):
+                    visibility = layer.get('id') in visible_layer_ids
+                    set_visibility(layer, visibility)
+                png_data = self.export_png(export_id)
 
-        png_data = self.export_png(tree, export_id)
         png_w, png_h = png_dimensions(png_data)
         image_scale = 96.0 / self.options.dpi
         width = png_w * image_scale
         height = png_h * image_scale
 
-        if image_elem is None:
-            image_attr = {
-                'x': fmt_f(self.view_center[0] - width / 2),
-                'y': fmt_f(self.view_center[1] - height / 2),
-                # XXX: Inkscape normally sets preserveAspectRatio=none
-                # which allows the image to be scaled arbitrarily.
-                # SVG default is preserveAspectRatio=xMidYMid, which
-                # preserve the image aspect ratio on scaling and seems
-                # to make more sense for us.
-                #
-                # 'preserveAspectRatio': "none",
-                'style': "image-rendering:optimizeQuality",
-                BH_INSET_EXPORT_ID: export_id,
-                BH_INSET_VISIBLE_LAYERS: ' '.join(visible_layer_ids),
-                }
-            image_elem = inkex.etree.SubElement(
-                self.document.getroot(), SVG_IMAGE, image_attr)
+        if image is None:
+            # Create new image element, centered on view
+            image = inkex.etree.SubElement(
+                self.document.getroot(), SVG_IMAGE,
+                x=fmt_f(self.view_center[0] - width / 2),
+                y=fmt_f(self.view_center[1] - height / 2))
 
-        image_elem.attrib.update({
+        image.attrib.update({
             'width': fmt_f(width),
             'height': fmt_f(height),
             XLINK_HREF: 'data:image/png;base64,' + base64.b64encode(png_data),
+            BH_INSET_EXPORT_ID: export_id,
+            BH_INSET_VISIBLE_LAYERS: ' '.join(visible_layer_ids),
+            'style': "image-rendering:optimizeQuality",
+            # Inkscape normally sets preserveAspectRatio=none
+            # which allows the image to be scaled arbitrarily.
+            # SVG default is preserveAspectRatio=xMidYMid, which
+            # preserve the image aspect ratio on scaling and seems
+            # to make more sense for us.
+            'preserveAspectRatio': "xMidYMid",
             })
 
 
