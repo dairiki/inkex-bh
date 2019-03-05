@@ -192,7 +192,10 @@ class Element(object):
 
     def compute_bbox(self, transform=None):
         t = composed_transform(self.parent, transform)
-        return BoundingBox(simpletransform.computeBBox([self.element], t))
+        bbox = simpletransform.computeBBox([self.element], t)
+        if bbox is None:
+            return None
+        return BoundingBox(bbox)
 
     @reify
     def bbox(self):
@@ -200,7 +203,8 @@ class Element(object):
 
     @property
     def position(self):
-        return self.bbox.ul
+        if self.bbox is not None:
+            return self.bbox.ul
 
     @position.setter
     def position(self, newpos):
@@ -216,6 +220,11 @@ class Element(object):
         for name in dir(cls):
             if isinstance(getattr(cls, name), reify):
                 delattr(self, name)
+
+
+def bboxes_for_elements(elems):
+    return [bbox for bbox in map(lambda e: Element(e).bbox, elems)
+            if bbox is not None]
 
 
 class RatGuide(object):
@@ -272,7 +281,7 @@ class RatGuide(object):
                                 namespaces=NSMAP))
 
     def _compute_boundary(self, elems):
-        bboxes = [Element(el).bbox for el in elems]
+        bboxes = bboxes_for_elements(elems)
         if bboxes:
             return reduce(BoundingBox.union, bboxes)
         else:
@@ -300,13 +309,12 @@ class RatGuide(object):
                                    namespaces=NSMAP))
 
     def get_exclusions(self):
-        res = self.guide_layer.xpath(
+        return bboxes_for_elements(self.guide_layer.xpath(
             ".//*[@bh:rat-guide-mode='exclusion']"
-            # Treat top-level elements created in the guide layer by the user
-            # as exclusions
+            # Treat top-level elements created in the guide layer by
+            # the user as exclusions
             " | ./*[not(@bh:rat-guide-mode)]",
-            namespaces=NSMAP)
-        return [Element(excl).bbox for excl in res]
+            namespaces=NSMAP))
 
 
 # FIXME: move this
