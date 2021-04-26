@@ -169,6 +169,17 @@ def composed_transform(elem, transform=None):
                   Transform(transform))
 
 
+def containing_layer(elem):
+    """Return svg:g element for the layer containing elem or None if there is no such layer.
+    """
+    layers = elem.xpath(
+        "./ancestor::svg:g[@inkscape:groupmode='layer'][position()=1]",
+        namespaces=NSMAP)
+    if layers:
+        return layers[0]
+    return None
+
+
 class Element(object):
     """ Helper for element placement """
     def __init__(self, element):
@@ -238,16 +249,19 @@ class RatGuide(object):
         'stroke-dasharray:2,6;'
         'stroke-linecap:round;stroke-miterlimit:4')
 
-    def __init__(self, document, page_bbox):
+    def __init__(self, document, page_bbox, parent=None):
         self.document = document
         self.page_bbox = page_bbox
 
-        existing = document.xpath("//svg:g[@bh:rat-guide-mode='layer']",
-                                  namespaces=NSMAP)
+        if parent is None:
+            parent = document.getroot()
+        existing = parent.xpath(".//svg:g[@bh:rat-guide-mode='layer']",
+                                namespaces=NSMAP)
         if existing:
             self.guide_layer = existing[0]
         else:
             self.guide_layer = self._create_guide_layer()
+            parent.append(self.guide_layer)
             self._populate_guide_layer()
 
     def _create_guide_layer(self):
@@ -258,7 +272,6 @@ class RatGuide(object):
             BH_RAT_GUIDE_MODE: 'layer',
             SODIPODI_INSENSTIVE: 'true',
             })
-        self.document.getroot().append(layer)
         return layer
 
     def _populate_guide_layer(self):
@@ -420,8 +433,23 @@ class HideRats(inkex.Effect):
         ymax = self.unittouu(svg.attrib['height'])
         return BoundingBox(0, xmax, 0, ymax)
 
+    def get_rat_layer(self):
+        rat_layers = list(map(containing_layer, self.selected.values()))
+        if len(rat_layers) == 0:
+            raise RuntimeError("No rats selected")
+        if len(set(rat_layers)) != 1:
+            raise RuntimeError("Rats are not all on the same layer")
+        layer = rat_layers[0]
+        if layer is None:
+            raise RuntimeError("Rats are not on a layer")
+        return layer
+
     def effect(self):
-        guide_layer = RatGuide(self.document, self.get_page_boundary())
+        rat_layer = self.get_rat_layer()
+
+        guide_layer = RatGuide(self.document,
+                               self.get_page_boundary(),
+                               parent_layer=containing_layer(rat_layer))
         if self.options.restart:
             # FIXME:
             guide_layer.reset()
