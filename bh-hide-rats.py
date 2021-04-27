@@ -249,11 +249,13 @@ class RatGuide(object):
         'stroke-dasharray:2,6;'
         'stroke-linecap:round;stroke-miterlimit:4')
 
-    def __init__(self, document, page_bbox, parent=None):
+    def __init__(self, document, page_bbox, parent_layer=None):
         self.document = document
         self.page_bbox = page_bbox
 
-        if parent is None:
+        if parent_layer is not None:
+            parent = parent_layer
+        else:
             parent = document.getroot()
         existing = parent.xpath(".//svg:g[@bh:rat-guide-mode='layer']",
                                 namespaces=NSMAP)
