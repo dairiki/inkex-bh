@@ -7,6 +7,7 @@ from collections import namedtuple
 from functools import update_wrapper
 from itertools import count
 import random
+import re
 
 from lxml import etree
 
@@ -427,7 +428,7 @@ class HideRats(inkex.Effect):
         inkex.Effect.__init__(self)
         self.OptionParser.add_option("--tab")
         self.OptionParser.add_option("--restart", type="inkbool")
-        self.OptionParser.add_option("--verbose", type="inkbool")
+        self.OptionParser.add_option("--newblind", type="inkbool")
 
     def get_page_boundary(self):
         svg = self.document.getroot()
@@ -435,8 +436,8 @@ class HideRats(inkex.Effect):
         ymax = self.unittouu(svg.attrib['height'])
         return BoundingBox(0, xmax, 0, ymax)
 
-    def get_rat_layer(self):
-        rat_layers = list(map(containing_layer, self.selected.values()))
+    def get_rat_layer(self, rats):
+        rat_layers = list(map(containing_layer, rats))
         if len(rat_layers) == 0:
             raise RuntimeError("No rats selected")
         if len(set(rat_layers)) != 1:
@@ -446,8 +447,44 @@ class HideRats(inkex.Effect):
             raise RuntimeError("Rats are not on a layer")
         return layer
 
+    def clone_blind(self, rat_layer, rats):
+        new_rats = set()
+
+        def _clone(elem):
+            attrib = dict(elem.attrib)
+            attrib.pop('id', None)
+            copy = inkex.etree.Element(elem.tag, attrib)
+            copy[:] = map(_clone, elem)
+            if elem in rats:
+                new_rats.add(copy)
+            return copy
+            
+        new_layer = _clone(rat_layer)
+
+        # compute name for new lyaer
+        names = set()
+        max_idx = 0
+        for label in rat_layer.xpath("../svg:g[@inkscape:groupmode='layer']/@inkscape:label",
+                                     namespaces=NSMAP):
+            m = re.match(r'^\[o\]\s*(.*?)\s+(\d+)\s*$', label)
+            if m:
+                name, idx = m.groups()
+                names.add(name)
+                max_idx = max(max_idx, int(idx))
+        if len(names) == 1:
+            name = names.pop()
+        else:
+            name = 'Blind'
+        new_layer.attrib[INKSCAPE_LABEL] = "[o] %s %d" % (name, max_idx + 1)
+
+        rat_layer.getparent().insert(0, new_layer)
+        rat_layer.attrib['style'] = 'display:none'
+        return new_rats
+        
     def effect(self):
-        rat_layer = self.get_rat_layer()
+        rats = set(self.selected.values())
+        rat_layer = self.get_rat_layer(rats)
+        assert rat_layer.tag == SVG_G
 
         guide_layer = RatGuide(self.document,
                                self.get_page_boundary(),
@@ -456,11 +493,14 @@ class HideRats(inkex.Effect):
             # FIXME:
             guide_layer.reset()
 
+        if self.options.newblind:
+            rats = self.clone_blind(rat_layer, rats)
+
         bounds = guide_layer.get_boundary()
         exclusions = guide_layer.get_exclusions()
         rat_placer = RatPlacer(bounds, exclusions)
 
-        for el in self.selected.values():
+        for el in rats:
             rat = Element(el)
             rat_placer.place_rat(rat)
             guide_layer.add_exclusion(rat.bbox)

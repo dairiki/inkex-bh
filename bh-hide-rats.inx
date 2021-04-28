@@ -10,9 +10,10 @@
               type="boolean"
               _gui-text="Restart. Delete exisiting auto-generated exclude regions"
               >false</_param>
-      <_param name="verbose"
+      <_param name="newblind"
               type="boolean"
-              _gui-text="Verbose output: note defs which were not found in the symbol library."></_param>
+              _gui-text="Clone rat layer. (Create new blind.)"
+              >false</_param>
     </page>
     <page name="Help" _gui-text="Help">
       <_param name="texthelp" type="description">Randomize the position of selected elements.
