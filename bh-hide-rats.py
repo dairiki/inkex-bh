@@ -466,7 +466,7 @@ class HideRats(inkex.Effect):
         max_idx = 0
         for label in rat_layer.xpath("../svg:g[@inkscape:groupmode='layer']/@inkscape:label",
                                      namespaces=NSMAP):
-            m = re.match(r'^\[o\]\s*(.*?)\s+(\d+)\s*$', label)
+            m = re.match(r'^(\[o.*?\].*?)\s+(\d+)\s*$', label)
             if m:
                 name, idx = m.groups()
                 names.add(name)
@@ -475,7 +475,7 @@ class HideRats(inkex.Effect):
             name = names.pop()
         else:
             name = 'Blind'
-        new_layer.attrib[INKSCAPE_LABEL] = "[o] %s %d" % (name, max_idx + 1)
+        new_layer.attrib[INKSCAPE_LABEL] = "%s %d" % (name, max_idx + 1)
 
         rat_layer.getparent().insert(0, new_layer)
         rat_layer.attrib['style'] = 'display:none'
@@ -489,7 +489,7 @@ class HideRats(inkex.Effect):
         guide_layer = RatGuide(self.document,
                                self.get_page_boundary(),
                                parent_layer=containing_layer(rat_layer))
-        if self.options.restart:
+        if self.options.restart or self.options.newblind:
             # FIXME:
             guide_layer.reset()
 

@@ -12,7 +12,7 @@
               >false</_param>
       <_param name="newblind"
               type="boolean"
-              _gui-text="Clone rat layer. (Create new blind.)"
+              _gui-text="Clone rat layer. (Create new blind and restart.)"
               >false</_param>
     </page>
     <page name="Help" _gui-text="Help">
