@@ -454,6 +454,8 @@ class HideRats(inkex.Effect):
             attrib = dict(elem.attrib)
             attrib.pop('id', None)
             copy = inkex.etree.Element(elem.tag, attrib)
+            copy.text = elem.text
+            copy.tail = elem.tail
             copy[:] = map(_clone, elem)
             if elem in rats:
                 new_rats.add(copy)
