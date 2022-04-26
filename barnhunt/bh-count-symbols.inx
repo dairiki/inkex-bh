@@ -2,7 +2,6 @@
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
   <_name>Count Symbols</_name>
   <id>org.dairiki.bh.count-symbols</id>
-  <dependency type="executable" location="extensions">bh-count-symbols.py</dependency>
   <dependency type="executable" location="extensions">inkex.py</dependency>
   <param name="tab" type="notebook">
     <page name="Options" _gui-text="Options">
@@ -24,6 +23,6 @@ This counts visible symbols (i.e. those not on hidden layers.)</_param>
     </effects-menu>
   </effect>
   <script>
-    <command reldir="extensions" interpreter="python">bh-count-symbols.py</command>
+    <command location="inx" interpreter="python">bh-count-symbols.py</command>
   </script>
 </inkscape-extension>
