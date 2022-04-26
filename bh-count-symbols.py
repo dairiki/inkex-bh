@@ -9,13 +9,13 @@ from lxml import etree
 
 import inkex
 
-inkex.localize()
+inkex.localization.localize()
 _ = _                           # noqa: F821
 
 SVG_SYMBOL = inkex.addNS('symbol', 'svg')
 
 BH_NS = 'http://dairiki.org/barnhunt/inkscape-extensions'
-BH_COUNT_AS = etree.QName(BH_NS, 'count-as')
+BH_COUNT_AS = f"{{{BH_NS}}}count-as"
 
 NSMAP = inkex.NSS.copy()
 NSMAP['bh'] = BH_NS
@@ -56,12 +56,14 @@ class SymbolCounter(object):
                 Counter())
 
 
-class CountSymbols(inkex.Effect):
-    def __init__(self):
-        inkex.Effect.__init__(self)
-        self.OptionParser.add_option("--tab")
-        self.OptionParser.add_option("--include-hidden", type="inkbool")
+class CountSymbols(inkex.OutputExtension):
+    def add_arguments(self, pars):
+        pars.add_argument("--tab")
+        pars.add_argument("--include-hidden", type=inkex.Boolean)
 
+    def save(self, stream):
+        pass
+    
     def effect(self):
         document = self.document
 
@@ -79,4 +81,4 @@ class CountSymbols(inkex.Effect):
 
 
 if __name__ == '__main__':
-    CountSymbols().affect(output=False)
+    CountSymbols().run()
