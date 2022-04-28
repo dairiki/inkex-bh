@@ -4,7 +4,7 @@
 
 '''
 from collections import namedtuple
-from functools import update_wrapper
+from functools import reduce, update_wrapper
 from itertools import count
 import random
 import re
@@ -14,7 +14,7 @@ from lxml import etree
 import inkex
 import simpletransform
 
-inkex.localize()
+inkex.localization.localize()
 _ = _                           # noqa: F821
 
 SVG_SVG = inkex.addNS('svg', 'svg')
@@ -27,11 +27,20 @@ SODIPODI_INSENSTIVE = inkex.addNS('insensitive', 'sodipodi')
 XLINK_HREF = inkex.addNS('href', 'xlink')
 
 BH_NS = 'http://dairiki.org/barnhunt/inkscape-extensions'
-BH_RAT_PLACEMENT = etree.QName(BH_NS, 'rat-placement')
-BH_RAT_GUIDE_MODE = etree.QName(BH_NS, 'rat-guide-mode')
+BH_RAT_PLACEMENT = f"{{{BH_NS}}}rat-placement"
+BH_RAT_GUIDE_MODE = f"{{{BH_NS}}}rat-guide-mode"
 
 NSMAP = inkex.NSS.copy()
 NSMAP['bh'] = BH_NS
+
+
+def _xp_str(s):
+    for quote in '"', "'":
+        if quote not in s:
+            return f"{quote}{s}{quote}"
+    strs = re.findall('[^"]+|[^\']+', s)
+    assert ''.join(strs) == s
+    return f"concat({','.join(map(_xp_str, strs))})"
 
 
 class Point(namedtuple('Point', ['x', 'y'])):
@@ -103,7 +112,7 @@ class Transform(tuple):
     def __new__(cls, transform=None):
         if transform is None:
             transform = ((1, 0, 0), (0, 1, 0))
-        elif isinstance(transform, basestring):
+        elif isinstance(transform, str):
             transform = simpletransform.parseTransform(transform)
         elif isinstance(transform, Transform):
             # FIXME: better type checking
@@ -192,7 +201,7 @@ class Element(object):
 
     @transform.setter
     def transform(self, newval):
-        if not isinstance(newval, basestring):
+        if not isinstance(newval, str):
             newval = str(Transform(newval))
         return self.element.set('transform', newval)
 
@@ -268,7 +277,7 @@ class RatGuide(object):
             self._populate_guide_layer()
 
     def _create_guide_layer(self):
-        layer = inkex.etree.Element(SVG_G)
+        layer = etree.Element(SVG_G)
         layer.attrib.update({
             INKSCAPE_LABEL: '[h] %s' % _('Rat Placement Guides'),
             INKSCAPE_GROUPMODE: 'layer',
@@ -335,11 +344,11 @@ class RatGuide(object):
 
 # FIXME: move this
 def make_rect(bbox):
-    return inkex.etree.Element(SVG_RECT,
-                               x="%f" % bbox.xmin,
-                               y="%f" % bbox.ymin,
-                               width="%f" % bbox.width,
-                               height="%f" % bbox.height)
+    return etree.Element(SVG_RECT,
+                         x="%f" % bbox.xmin,
+                         y="%f" % bbox.ymin,
+                         width="%f" % bbox.width,
+                         height="%f" % bbox.height)
 
 
 # FIXME: move this
@@ -369,7 +378,8 @@ def find_exclusions(elem, transform=None):
             assert href.startswith('#') and len(href) > 1
 
             local_tfm = composed_transform(Element(el), transform)
-            for node in elem.xpath('//*[@id=$ref_id]', ref_id=href[1:]):
+            raise RuntimeError(f"elem = {elem!r}")
+            for node in elem.xpath(f'//*[@id={_xp_str(href[1:])}]'):
                 exclusions.extend(find_exclusions(node, local_tfm))
     return exclusions
 
@@ -423,17 +433,16 @@ class RatPlacer(object):
         return x, y
 
 
-class HideRats(inkex.Effect):
-    def __init__(self):
-        inkex.Effect.__init__(self)
-        self.OptionParser.add_option("--tab")
-        self.OptionParser.add_option("--restart", type="inkbool")
-        self.OptionParser.add_option("--newblind", type="inkbool")
+class HideRats(inkex.EffectExtension):
+    def add_arguments(self, pars):
+        pars.add_argument("--tab")
+        pars.add_argument("--restart", type=inkex.Boolean)
+        pars.add_argument("--newblind", type=inkex.Boolean)
 
     def get_page_boundary(self):
         svg = self.document.getroot()
-        xmax = self.unittouu(svg.attrib['width'])
-        ymax = self.unittouu(svg.attrib['height'])
+        xmax = self.svg.unittouu(svg.attrib['width'])
+        ymax = self.svg.unittouu(svg.attrib['height'])
         return BoundingBox(0, xmax, 0, ymax)
 
     def get_rat_layer(self, rats):
@@ -453,7 +462,7 @@ class HideRats(inkex.Effect):
         def _clone(elem):
             attrib = dict(elem.attrib)
             attrib.pop('id', None)
-            copy = inkex.etree.Element(elem.tag, attrib)
+            copy = etree.Element(elem.tag, attrib)
             copy.text = elem.text
             copy.tail = elem.tail
             copy[:] = map(_clone, elem)
@@ -484,7 +493,7 @@ class HideRats(inkex.Effect):
         return new_rats
         
     def effect(self):
-        rats = set(self.selected.values())
+        rats = self.svg.selection
         rat_layer = self.get_rat_layer(rats)
         assert rat_layer.tag == SVG_G
 
@@ -510,4 +519,4 @@ class HideRats(inkex.Effect):
 
 
 if __name__ == '__main__':
-    HideRats().affect()
+    HideRats().run()
