@@ -6,16 +6,15 @@
 from collections import namedtuple
 from functools import reduce, update_wrapper
 from itertools import count
+from operator import add
 import random
 import re
 
 from lxml import etree
 
 import inkex
-import simpletransform
-
-inkex.localization.localize()
-_ = _                           # noqa: F821
+from inkex.localization import inkex_gettext as _
+#import simpletransform
 
 SVG_SVG = inkex.addNS('svg', 'svg')
 SVG_G = inkex.addNS('g', 'svg')
@@ -26,12 +25,12 @@ INKSCAPE_LABEL = inkex.addNS('label', 'inkscape')
 SODIPODI_INSENSTIVE = inkex.addNS('insensitive', 'sodipodi')
 XLINK_HREF = inkex.addNS('href', 'xlink')
 
-BH_NS = 'http://dairiki.org/barnhunt/inkscape-extensions'
-BH_RAT_PLACEMENT = f"{{{BH_NS}}}rat-placement"
-BH_RAT_GUIDE_MODE = f"{{{BH_NS}}}rat-guide-mode"
-
-NSMAP = inkex.NSS.copy()
-NSMAP['bh'] = BH_NS
+NSMAP = {
+    **inkex.NSS,
+    "bh": "http://dairiki.org/barnhunt/inkscape-extensions",
+}
+BH_RAT_PLACEMENT = f"{{{NSMAP['bh']}}}rat-placement"
+BH_RAT_GUIDE_MODE = f"{{{NSMAP['bh']}}}rat-guide-mode"
 
 
 def _xp_str(s):
@@ -43,142 +42,6 @@ def _xp_str(s):
     return f"concat({','.join(map(_xp_str, strs))})"
 
 
-class Point(namedtuple('Point', ['x', 'y'])):
-    def __new__(cls, *args, **kwargs):
-        if len(args) == 1 and not kwargs:
-            args = args[0]
-        return super(Point, cls).__new__(cls, *args, **kwargs)
-
-    def __sub__(self, other):
-        if not isinstance(other, Point):
-            raise TypeError()
-        return Offset(dx=self.x - other.x, dy=self.y - other.y)
-
-
-class Offset(namedtuple('Offset', ['dx', 'dy'])):
-    def __new__(cls, *args, **kwargs):
-        if len(args) == 1 and not kwargs:
-            args = args[0]
-        return super(Offset, cls).__new__(cls, *args, **kwargs)
-
-
-class Dimension(namedtuple('Point', ['width', 'height'])):
-    def __new__(cls, *args, **kwargs):
-        if len(args) == 1 and not kwargs:
-            args = args[0]
-        return super(Dimension, cls).__new__(cls, *args, **kwargs)
-
-
-class BoundingBox(namedtuple('BoundingBox', ['xmin', 'xmax', 'ymin', 'ymax'])):
-    def __new__(cls, *args, **kwargs):
-        if len(args) == 1 and not kwargs:
-            args = args[0]
-        return super(BoundingBox, cls).__new__(cls, *args, **kwargs)
-
-    @property
-    def width(self):
-        return self.xmax - self.xmin
-
-    @property
-    def height(self):
-        return self.ymax - self.ymin
-
-    @property
-    def dimension(self):
-        return Dimension(width=self.xmax - self.xmin,
-                         height=self.ymax - self.ymin)
-
-    @property
-    def ul(self):
-        return Point(x=self.xmin, y=self.ymin)
-
-    @property
-    def lr(self):
-        return Point(x=self.xmax, y=self.ymax)
-
-    def union(self, other):
-        if not isinstance(other, BoundingBox):
-            raise TypeError()
-        return BoundingBox(simpletransform.boxunion(self, other))
-
-    def overlaps(self, other):
-        return (self.xmin <= other.xmax
-                and self.ymin <= other.ymax
-                and other.xmin <= self.xmax
-                and other.ymin <= self.ymax)
-
-
-class Transform(tuple):
-    def __new__(cls, transform=None):
-        if transform is None:
-            transform = ((1, 0, 0), (0, 1, 0))
-        elif isinstance(transform, str):
-            transform = simpletransform.parseTransform(transform)
-        elif isinstance(transform, Transform):
-            # FIXME: better type checking
-            pass
-        return tuple.__new__(cls, transform)
-
-    @classmethod
-    def offset(cls, offset):
-        offset = Offset(offset)
-        return cls(((1, 0, offset.dx),
-                    (0, 1, offset.dy)))
-
-    def inverse(self):
-        return Transform(simpletransform.invertTransform(self))
-
-    def __mul__(self, other):
-        if isinstance(other, Transform):
-            return Transform(
-                simpletransform.composeTransform(self, other))
-        elif isinstance(other, Point):
-            (a11, a12, a13), (a21, a22, a23) = self
-            return Point(x=a11 * other.x + a12 * other.y + a13,
-                         y=a21 * other.x + a22 * other.y + a23)
-        elif isinstance(other, Offset):
-            (a11, a12, _), (a21, a22, _) = self
-            return Offset(dx=a11 * other.dx + a12 * other.dy,
-                          dy=a21 * other.dx + a22 * other.dy)
-        else:
-            raise TypeError()
-
-    def __str__(self):
-        (a11, a12, a13), (a21, a22, a23) = self
-        if (a11, a12, a21, a22) == (1, 0, 0, 1):
-            return "translate(%f,%f)" % (a13, a23)
-        else:
-            return simpletransform.formatTransform(self)
-
-    def __repr__(self):
-        return "%s%r" % (self.__class__.__name__, tuple(self))
-
-
-class reify(object):
-    def __init__(self, wrapped):
-        self.wrapped = wrapped
-        update_wrapper(self, wrapped)
-
-    def __get__(self, inst, objtype=None):
-        if inst is None:
-            return self
-        val = self.wrapped(inst)
-        setattr(inst, self.wrapped.__name__, val)
-        return val
-
-
-def lineage(elem):
-    while elem:
-        yield elem
-        elem = elem.parent
-
-
-def composed_transform(elem, transform=None):
-    return reduce(lambda transform, el: el.transform * transform,
-                  lineage(elem),
-                  Transform(transform))
-
-
 def containing_layer(elem):
     """Return svg:g element for the layer containing elem or None if there is no such layer.
     """
@@ -188,64 +51,6 @@ def containing_layer(elem):
     if layers:
         return layers[0]
     return None
-
-
-class Element(object):
-    """ Helper for element placement """
-    def __init__(self, element):
-        self.element = element
-
-    @property
-    def transform(self):
-        return Transform(self.element.get('transform'))
-
-    @transform.setter
-    def transform(self, newval):
-        if not isinstance(newval, str):
-            newval = str(Transform(newval))
-        return self.element.set('transform', newval)
-
-    @property
-    def parent(self):
-        parent = self.element.getparent()
-        if parent is not None:
-            return Element(parent)
-
-    def compute_bbox(self, transform=None):
-        t = composed_transform(self.parent, transform)
-        bbox = simpletransform.computeBBox([self.element], t)
-        if bbox is None:
-            return None
-        return BoundingBox(bbox)
-
-    @reify
-    def bbox(self):
-        return self.compute_bbox()
-
-    @property
-    def position(self):
-        if self.bbox is not None:
-            return self.bbox.ul
-
-    @position.setter
-    def position(self, newpos):
-        offset = Point(newpos) - self.position
-        local_offset = composed_transform(self.parent).inverse() * offset
-        self.transform = Transform.offset(local_offset) * self.transform
-        self._clear_cache()
-
-    def _clear_cache(self):
-        """Delete cached values."""
-        # Reset all reified values
-        cls = self.__class__
-        for name in dir(cls):
-            if isinstance(getattr(cls, name), reify):
-                delattr(self, name)
-
-
-def bboxes_for_elements(elems):
-    return [bbox for bbox in map(lambda e: Element(e).bbox, elems)
-            if bbox is not None]
 
 
 class RatGuide(object):
@@ -306,9 +111,10 @@ class RatGuide(object):
                                 namespaces=NSMAP))
 
     def _compute_boundary(self, elems):
-        bboxes = bboxes_for_elements(elems)
+        # FIXME: transform
+        bboxes =[el.bounding_box(transform=None) for el in elems]
         if bboxes:
-            return reduce(BoundingBox.union, bboxes)
+            return reduce(add, bboxes)
         else:
             return self.page_bbox
 
@@ -334,32 +140,29 @@ class RatGuide(object):
                                    namespaces=NSMAP))
 
     def get_exclusions(self):
-        return bboxes_for_elements(self.guide_layer.xpath(
+        elems = self.guide_layer.xpath(
             ".//*[@bh:rat-guide-mode='exclusion']"
             # Treat top-level elements created in the guide layer by
             # the user as exclusions
             " | ./*[not(@bh:rat-guide-mode)]",
-            namespaces=NSMAP))
+            namespaces=NSMAP
+        )
+        # FIXME: transform
+        return [el.bounding_box(transform=None) for el in elems]
 
 
 # FIXME: move this
 def make_rect(bbox):
-    return etree.Element(SVG_RECT,
-                         x="%f" % bbox.xmin,
-                         y="%f" % bbox.ymin,
-                         width="%f" % bbox.width,
-                         height="%f" % bbox.height)
+    return inkex.Rectangle.new(bbox.left, bbox.top, bbox.width, bbox.height)
 
 
 # FIXME: move this
 def find_exclusions(elem, transform=None):
-    exclusions = []
-
     if elem.getparent() is None:
         base = "/svg:svg/*[not(self::svg:defs)]/descendant-or-self::"
         is_hidden = ("ancestor::svg:g[@inkscape:groupmode='layer']"
                      "[contains(@style,'display:none')]")
-        cond = "[not({is_hidden})]".format(is_hidden=is_hidden)
+        cond = f"[not({is_hidden})]"
     else:
         base = "./descendant-or-self::"
         cond = ""
@@ -371,17 +174,17 @@ def find_exclusions(elem, transform=None):
 
     for el in elem.xpath(path, namespaces=NSMAP):
         if el.get(BH_RAT_PLACEMENT) == 'exclude':
-            exclusions.append(Element(el).compute_bbox(transform))
+            yield el.bounding_box(transform=transform)
         else:
             assert el.tag == SVG_USE
             href = el.get(XLINK_HREF)
             assert href.startswith('#') and len(href) > 1
 
-            local_tfm = composed_transform(Element(el), transform)
+            local_tfm = el.transform @ inkex.Transform(transform)
             raise RuntimeError(f"elem = {elem!r}")
             for node in elem.xpath(f'//*[@id={_xp_str(href[1:])}]'):
-                exclusions.extend(find_exclusions(node, local_tfm))
-    return exclusions
+                yield from find_exclusions(node)
+
 
 
 class RatPlacer(object):
@@ -395,14 +198,21 @@ class RatPlacer(object):
         self.exclusions.append(bbox)
 
     def place_rat(self, rat):
-        if not isinstance(rat, Element):
-            raise TypeError("rat must be an Element")
+        # FIXME: check for symbol?
+        #if not isinstance(rat, Element):
+        #    raise TypeError("rat must be an Element")
 
-        newpos = self.random_position(rat.bbox.dimension)
-        rat.position = newpos
+        # FIXME: transform
+        rat_bbox = rat.bounding_box(transform=None)
+        top, left = self.random_position(rat_bbox)
+        itrans = rat.getparent().composed_transform().__neg__()
+        local_offset = itrans.add_translate(
+            left - rat_bbox.left, top - rat_bbox.top
+        )
+        rat.transform @= local_offset
 
     def intersects_excluded(self, bbox):
-        return any(bbox.overlaps(excl) for excl in self.exclusions)
+        return any((bbox & excl) for excl in self.exclusions)
 
     def random_position(self, rat_bbox, max_tries=128):
         """Find a random new position for element.
@@ -413,16 +223,31 @@ class RatPlacer(object):
         any bboxes listed in EXCLUSIONS.
 
         """
-        xmin, xmax, ymin, ymax = self.boundary
-        xmax = max(xmax - rat_bbox.width, xmin)
-        ymax = max(ymax - rat_bbox.height, ymin)
+        # FIXME: this needs cleanup
+        boundary = inkex.BoundingBox.new_xywh(
+            self.boundary.left,
+            self.boundary.top,
+            self.boundary.width - rat_bbox.width,
+            self.boundary.height - rat_bbox.height
+            )
+        boundary &= self.boundary
+        inkex.errormsg(
+            f"boundary: {self.boundary!r} - {rat_bbox!r} = {boundary!r}"
+        )
+        inkex.errormsg(
+            f"exclusions: {len(self.exclusions)}"
+        )
+        for ex in self.exclusions:
+            inkex.errormsg(f"ex: {ex!r}")
+                
 
         for n in count(1):
             # Compute random position offset
-            x = random.uniform(xmin, xmax)
-            y = random.uniform(ymin, ymax)
-            new_bbox = BoundingBox(x, x + rat_bbox.width,
-                                   y, y + rat_bbox.height)
+            x = random.uniform(boundary.left, boundary.right)
+            y = random.uniform(boundary.top, boundary.bottom)
+            new_bbox = inkex.BoundingBox.new_xywh(
+                x, y, rat_bbox.width, rat_bbox.height
+            )
             if not self.intersects_excluded(new_bbox):
                 break
             elif n >= max_tries:
@@ -441,17 +266,16 @@ class HideRats(inkex.EffectExtension):
 
     def get_page_boundary(self):
         svg = self.document.getroot()
-        xmax = self.svg.unittouu(svg.attrib['width'])
-        ymax = self.svg.unittouu(svg.attrib['height'])
-        return BoundingBox(0, xmax, 0, ymax)
+        inkex.errormsg(f"page_boundary: {svg.get_page_bbox()!r}")
+        return svg.get_page_bbox()
 
     def get_rat_layer(self, rats):
-        rat_layers = list(map(containing_layer, rats))
+        rat_layers = set(map(containing_layer, rats))
         if len(rat_layers) == 0:
             raise RuntimeError("No rats selected")
-        if len(set(rat_layers)) != 1:
+        if len(rat_layers) != 1:
             raise RuntimeError("Rats are not all on the same layer")
-        layer = rat_layers[0]
+        layer = rat_layers.pop()
         if layer is None:
             raise RuntimeError("Rats are not on a layer")
         return layer
@@ -472,11 +296,13 @@ class HideRats(inkex.EffectExtension):
             
         new_layer = _clone(rat_layer)
 
-        # compute name for new lyaer
+        # compute name for new layer
         names = set()
         max_idx = 0
-        for label in rat_layer.xpath("../svg:g[@inkscape:groupmode='layer']/@inkscape:label",
-                                     namespaces=NSMAP):
+        for label in rat_layer.xpath(
+                "../svg:g[@inkscape:groupmode='layer']/@inkscape:label",
+                namespaces=NSMAP
+        ):
             m = re.match(r'^(\[o.*?\].*?)\s+(\d+)\s*$', label)
             if m:
                 name, idx = m.groups()
@@ -511,11 +337,13 @@ class HideRats(inkex.EffectExtension):
         exclusions = guide_layer.get_exclusions()
         rat_placer = RatPlacer(bounds, exclusions)
 
-        for el in rats:
-            rat = Element(el)
+        for rat in rats:
+            #rat = Element(el)
             rat_placer.place_rat(rat)
-            guide_layer.add_exclusion(rat.bbox)
-            rat_placer.add_exclusion(rat.bbox)
+            # FIXME: transform
+            bbox = rat.bounding_box(transform=None)
+            guide_layer.add_exclusion(bbox)
+            rat_placer.add_exclusion(bbox)
 
 
 if __name__ == '__main__':
