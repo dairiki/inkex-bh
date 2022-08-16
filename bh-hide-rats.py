@@ -1,29 +1,34 @@
-#! /usr/bin/python
-# Copyright (C) 2019 Geoffrey T. Dairiki <dairiki@dairiki.org>
+# Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
 ''' Randomize the position of selected elements
 
 '''
-from collections import namedtuple
-from functools import reduce, update_wrapper
-from itertools import count
-from operator import add
 import random
 import re
+from argparse import ArgumentParser
+from collections import namedtuple
+from contextlib import contextmanager
+from functools import reduce, update_wrapper
+from itertools import chain
+from itertools import count
+from operator import add
+from typing import cast
+from typing import Iterator
+from typing import Literal
+from typing import Optional
+from typing import Set
+from typing import Sequence
+from typing import Tuple
 
-from lxml import etree
+from lxml.etree import XPath
 
 import inkex
 from inkex.localization import inkex_gettext as _
-#import simpletransform
 
-SVG_SVG = inkex.addNS('svg', 'svg')
-SVG_G = inkex.addNS('g', 'svg')
+import bh_debug as debug
+from bh_inkex_bugs import text_bbox_hack
+
+
 SVG_USE = inkex.addNS('use', 'svg')
-SVG_RECT = inkex.addNS('rect', 'svg')
-INKSCAPE_GROUPMODE = inkex.addNS('groupmode', 'inkscape')
-INKSCAPE_LABEL = inkex.addNS('label', 'inkscape')
-SODIPODI_INSENSTIVE = inkex.addNS('insensitive', 'sodipodi')
-XLINK_HREF = inkex.addNS('href', 'xlink')
 
 NSMAP = {
     **inkex.NSS,
@@ -33,7 +38,8 @@ BH_RAT_PLACEMENT = f"{{{NSMAP['bh']}}}rat-placement"
 BH_RAT_GUIDE_MODE = f"{{{NSMAP['bh']}}}rat-guide-mode"
 
 
-def _xp_str(s):
+def _xp_str(s: str) -> str:
+    """ Quote string for use in xpath expression. """
     for quote in '"', "'":
         if quote not in s:
             return f"{quote}{s}{quote}"
@@ -42,7 +48,7 @@ def _xp_str(s):
     return f"concat({','.join(map(_xp_str, strs))})"
 
 
-def containing_layer(elem):
+def containing_layer(elem: inkex.BaseElement) -> Optional[inkex.Layer]:
     """Return svg:g element for the layer containing elem or None if there is no such layer.
     """
     layers = elem.xpath(
@@ -53,111 +59,198 @@ def containing_layer(elem):
     return None
 
 
-class RatGuide(object):
-    BOUNDARY_STYLE = (
-        'fill:none;'
-        'stroke:#00ff00;stroke-width:2;stroke-dasharray:4,8;'
-        'stroke-linecap:round;stroke-miterlimit:4')
-    EXCLUSION_STYLE = (
-        'fill:#c68c8c;fill-opacity:0.125;'
-        'stroke:#ff0000;stroke-width:1;stroke-opacity:0.5;'
-        'stroke-dasharray:2,6;'
-        'stroke-linecap:round;stroke-miterlimit:4')
+def bounding_box(elem: inkex.BaseElement) -> inkex.BoundingBox:
+    """ Get bounding box in page coordinates (user units)
+    """
+    return elem.bounding_box(elem.getparent().composed_transform())
 
-    def __init__(self, document, page_bbox, parent_layer=None):
-        self.document = document
-        self.page_bbox = page_bbox
 
-        if parent_layer is not None:
-            parent = parent_layer
-        else:
-            parent = document.getroot()
-        existing = parent.xpath(".//svg:g[@bh:rat-guide-mode='layer']",
-                                namespaces=NSMAP)
+class RatGuide:
+    GuideMode = Literal["exclusion", "notation"]
+                   
+    def __init__(self, exclusions: Sequence[inkex.BoundingBox], parent_layer: inkex.Layer):
+        self.exclusions = list(exclusions)
+
+        existing = parent_layer.xpath(".//svg:g[@bh:rat-guide-mode='layer']",
+                                      namespaces=NSMAP)
         if existing:
             self.guide_layer = existing[0]
+            self._delete_rects("notation")
         else:
-            self.guide_layer = self._create_guide_layer()
-            parent.append(self.guide_layer)
-            self._populate_guide_layer()
+            layer = inkex.Layer.new('[h] {}'.format(_('Rat Placement Guides')))
+            layer.set_sensitive(False)
+            layer.set(BH_RAT_GUIDE_MODE, 'layer')
+            parent_layer.append(layer)
+            self.guide_layer = layer
 
-    def _create_guide_layer(self):
-        layer = etree.Element(SVG_G)
-        layer.attrib.update({
-            INKSCAPE_LABEL: '[h] %s' % _('Rat Placement Guides'),
-            INKSCAPE_GROUPMODE: 'layer',
-            BH_RAT_GUIDE_MODE: 'layer',
-            SODIPODI_INSENSTIVE: 'true',
-            })
-        return layer
+        identity = inkex.Transform()
+        assert self.guide_layer.composed_transform() == identity
 
-    def _populate_guide_layer(self):
-        # Draw bounding box on guide layer
-        bounds = make_rect(self._get_boundary())
-        bounds.attrib.update({
-            BH_RAT_GUIDE_MODE: 'boundary',
-            'style': self.BOUNDARY_STYLE,
-            })
-        self.guide_layer.insert(0, bounds)
+        for excl in self.exclusions:
+            self._add_rect(excl, "notation")
 
-        # Find visible exclusion elements and draw their bounding boxes
-        for bbox in find_exclusions(self.document.getroot()):
-            # FIXME: add link to original exclusion element?
-            self.add_exclusion(bbox)
+        for elem in self.guide_layer.xpath(
+                ".//*[@bh:rat-guide-mode='exclusion']"
+                # Treat top-level elements created in the guide layer by
+                # the user as exclusions
+                " | ./*[not(@bh:rat-guide-mode)]",
+                namespaces=NSMAP
+        ):
+            self.exclusions.append(bounding_box(elem))
+        
 
-    def _get_boundary(self):
-        return self._compute_boundary(
-            self.document.xpath("//*[@bh:rat-placement='boundary']",
-                                namespaces=NSMAP))
+    def reset(self) -> None:
+        self._delete_rects("exclusion")
 
-    def _compute_boundary(self, elems):
-        # FIXME: transform
-        bboxes =[el.bounding_box(transform=None) for el in elems]
-        if bboxes:
-            return reduce(add, bboxes)
-        else:
-            return self.page_bbox
+    def add_exclusion(self, bbox: inkex.BoundingBox) -> None:
+        self._add_rect(bbox, "exclusion")
+        self.exclusions.append(bbox)
 
-    def reset(self):
-        guide_layer = self.guide_layer
-        # delete all auto-created elements
-        for el in guide_layer.xpath(".//*[@bh:rat-guide-mode]",
-                                    namespaces=NSMAP):
-            el.getparent().remove(el)
-        self._populate_guide_layer()
+    DEFAULT_STYLE = {
+        "fill": "#c68c8c",
+        "fill-opacity": "0.125",
+        "stroke": "#ff0000",
+        "stroke-width": "1",
+        "stroke-opacity": "0.5",
+        "stroke-dasharray": "2,6",
+        "stroke-linecap": "round",
+        "stroke-miterlimit": "4",
+    }
+    STYLES = {
+        "notation": {
+            **DEFAULT_STYLE,
+            "fill": "#aaaaaa",
+        }
+    }
 
-    def add_exclusion(self, bbox):
-        rect = make_rect(bbox)
-        rect.attrib.update({
-            BH_RAT_GUIDE_MODE: 'exclusion',
-            'style': self.EXCLUSION_STYLE,
-            })
+    def _add_rect(self, bbox: inkex.BoundingBox, mode: GuideMode) -> None:
+        rect = inkex.Rectangle.new(bbox.left, bbox.top, bbox.width, bbox.height)
+        rect.set(BH_RAT_GUIDE_MODE, mode)
+        rect.style = self.STYLES.get(mode, self.DEFAULT_STYLE)
         self.guide_layer.append(rect)
 
-    def get_boundary(self):
-        return self._compute_boundary(
-            self.guide_layer.xpath(".//*[@bh:rat-guide-mode='boundary']",
-                                   namespaces=NSMAP))
-
-    def get_exclusions(self):
-        elems = self.guide_layer.xpath(
-            ".//*[@bh:rat-guide-mode='exclusion']"
-            # Treat top-level elements created in the guide layer by
-            # the user as exclusions
-            " | ./*[not(@bh:rat-guide-mode)]",
-            namespaces=NSMAP
-        )
-        # FIXME: transform
-        return [el.bounding_box(transform=None) for el in elems]
+    def _delete_rects(self, mode: GuideMode) -> None:
+        for el in self.guide_layer.xpath(
+                f".//*[@bh:rat-guide-mode={_xp_str(mode)}]",
+                namespaces=NSMAP
+        ):
+            el.getparent().remove(el)
 
 
-# FIXME: move this
-def make_rect(bbox):
-    return inkex.Rectangle.new(bbox.left, bbox.top, bbox.width, bbox.height)
+class RatPlacer(object):
+    def __init__(self, boundary: inkex.BoundingBox, exclusions: Sequence[inkex.BoundingBox]):
+        self.boundary = boundary
+        self.exclusions = exclusions
+
+    def place_rat(self, rat: inkex.Use) -> None:
+        parent_transform = rat.getparent().composed_transform()
+        rat_bbox = rat.bounding_box(parent_transform)
+        debug.draw_bbox(rat_bbox, "red")
+
+        newpos = self.random_position(rat_bbox)
+
+        # Map positions from document to element
+        inverse_parent_transform = parent_transform.__neg__()
+        p2 = inverse_parent_transform.apply_to_point(newpos)
+        p1 = inverse_parent_transform.apply_to_point(rat_bbox.minimum)
+        rat.transform.add_translate(p2 - p1)
+        debug.draw_bbox(rat.bounding_box(parent_transform), "blue")
+
+    def intersects_excluded(self, bbox: inkex.BoundingBox) -> bool:
+        return any((bbox & excl) for excl in self.exclusions)
+
+    def random_position(
+            self, rat_bbox: inkex.BoundingBox, max_tries: int = 128
+    ) -> inkex.ImmutableVector2d:
+        """Find a random new position for element.
+
+        The element has dimensions given by DIMENSION.  The new position will
+        be contained within BOUNDARY, if possible.  Reasonable efforts will
+        be made to avoid placing the element such that it overlaps with
+        any bboxes listed in EXCLUSIONS.
+
+        """
+        x0 = self.boundary.left
+        x1 = max(self.boundary.right - rat_bbox.width, x0)
+        y0 = self.boundary.top
+        y1 = max(self.boundary.bottom - rat_bbox.height, y0)
+
+        def random_pos() -> inkex.ImmutableVector2d:
+            return inkex.ImmutableVector2d(
+                random.uniform(x0, x1), random.uniform(y0, y1)
+            )
+
+        for n in range(max_tries):
+            pos = random_pos()
+            new_bbox = inkex.BoundingBox.new_xywh(
+                pos.x, pos.y, rat_bbox.width, rat_bbox.height
+            )
+            if not self.intersects_excluded(new_bbox):
+                break
+        else:
+            inkex.errormsg(
+                _("Can not find non-excluded location for rat after {} tries. "
+                  "Giving up.").format(max_tries)
+            )
+        return pos
 
 
-# FIXME: move this
-def find_exclusions(elem, transform=None):
+class BadRats(ValueError):
+    pass
+
+
+def _clone_layer(
+        layer: inkex.Layer, selected: Sequence[inkex.BaseElement]
+) -> Tuple[inkex.Layer, Set[inkex.BaseElement]]:
+    cloned_selected = set()
+
+    def clone(elem: inkex.BaseElement) -> inkex.BaseElement:
+        attrib = dict(elem.attrib)
+        attrib.pop('id', None)
+        copy = elem.__class__()
+        copy.update(**attrib)
+        copy.text = elem.text
+        copy.tail = elem.tail
+        copy.extend(map(clone, elem))
+
+        if elem in selected:
+            cloned_selected.add(copy)
+        return copy
+            
+    return clone(layer), cloned_selected
+
+
+def _dwim_rat_layer_name(blind_parent: inkex.Layer) -> str:
+    labels = blind_parent.xpath(
+        "./svg:g[@inkscape:groupmode='layer']/@inkscape:label",
+        namespaces=NSMAP
+    )
+    pat = re.compile(r'^(\[o.*?\].*?)\s+(\d+)\s*$')
+    names, indexes = cast(Tuple[Set[str], Set[str]], map(set, zip(*(
+        m.groups() for m in map(pat.match, labels)
+        if m is not None
+    ))))
+    name = names.pop() if len(names) == 1 else "Blind"
+    index = max(map(int, indexes), default=0) + 1
+    return f"{name} {index}"
+
+
+def clone_rat_layer(
+        rat_layer: inkex.Layer, rats: Sequence[inkex.Use]
+) -> Tuple[inkex.Layer, Set[inkex.BaseElement]]:
+    new_layer, new_rats = _clone_layer(rat_layer, rats)
+    parent = rat_layer.getparent()
+    new_layer.set("inkscape:label", _dwim_rat_layer_name(parent))
+    parent.insert(0, new_layer)
+
+    # lock and hide cloned layer
+    rat_layer.style["display"] = "none"
+    rat_layer.set_sensitive(False)
+    return new_layer, new_rats
+
+def _iter_exclusions(
+        elem: inkex.BaseElement, transform: Optional[inkex.Transform] = None
+) -> Iterator[inkex.BoundingBox]:
     if elem.getparent() is None:
         base = "/svg:svg/*[not(self::svg:defs)]/descendant-or-self::"
         is_hidden = ("ancestor::svg:g[@inkscape:groupmode='layer']"
@@ -174,176 +267,109 @@ def find_exclusions(elem, transform=None):
 
     for el in elem.xpath(path, namespaces=NSMAP):
         if el.get(BH_RAT_PLACEMENT) == 'exclude':
-            yield el.bounding_box(transform=transform)
+            yield el.bounding_box(
+                transform @ el.getparent().composed_transform()
+            )
         else:
             assert el.tag == SVG_USE
-            href = el.get(XLINK_HREF)
-            assert href.startswith('#') and len(href) > 1
-
-            local_tfm = el.transform @ inkex.Transform(transform)
-            raise RuntimeError(f"elem = {elem!r}")
-            for node in elem.xpath(f'//*[@id={_xp_str(href[1:])}]'):
-                yield from find_exclusions(node)
-
+            local_tfm = inkex.Transform(transform) @ el.composed_transform()
+            href = el.href
+            if href is None:
+                inkex.errormsg(f"Invalid href={el.get('xlink:href')!r} in use")
+            else:
+                yield from _iter_exclusions(href, local_tfm)
 
 
-class RatPlacer(object):
-    def __init__(self, boundary, exclusions=None):
-        if exclusions is None:
-            exclusions = []
-        self.boundary = boundary
-        self.exclusions = exclusions
+def find_exclusions(
+        svg: inkex.SvgDocumentElement
+) -> Sequence[inkex.BoundingBox]:
+    """ Get the permanent rat exclusion bboxes for the course.
 
-    def add_exclusion(self, bbox):
-        self.exclusions.append(bbox)
+    These are defined by visible elements with a bh:rat-placement="exclude"
+    attribute.
 
-    def place_rat(self, rat):
-        # FIXME: check for symbol?
-        #if not isinstance(rat, Element):
-        #    raise TypeError("rat must be an Element")
+    Svg:use references are resolved when looking for exclusions.
+    """
+    return list(_iter_exclusions(svg))
 
-        # FIXME: transform
-        rat_bbox = rat.bounding_box(transform=None)
-        top, left = self.random_position(rat_bbox)
-        itrans = rat.getparent().composed_transform().__neg__()
-        local_offset = itrans.add_translate(
-            left - rat_bbox.left, top - rat_bbox.top
+
+def get_rat_boundary(svg: inkex.SvgDocumentElement) -> inkex.BoundingBox:
+    boundaries = svg.xpath(
+        "/svg:svg/*[not(self::svg:defs)]/descendant-or-self::"
+        "*[@bh:rat-placement='boundary']",
+        namespaces=NSMAP
+    )
+    if len(boundaries) == 0:
+        return svg.get_page_bbox()
+    bboxes = (
+        el.bounding_box(el.getparent().composed_transform())
+        for el in boundaries
+    )
+    return reduce(add, bboxes)
+
+
+def find_rat_layer(rats: Sequence[inkex.BaseElement]) -> inkex.Layer:
+
+    def looks_like_rat(elem: inkex.BaseElement) -> bool:
+        return (
+            elem.tag == SVG_USE
+            and re.match(r"#(rat|.*tube)", elem.get("xlink:href", "")) is not None
         )
-        rat.transform @= local_offset
 
-    def intersects_excluded(self, bbox):
-        return any((bbox & excl) for excl in self.exclusions)
-
-    def random_position(self, rat_bbox, max_tries=128):
-        """Find a random new position for element.
-
-        The element has dimensions given by DIMENSION.  The new position will
-        be contained within BOUNDARY, if possible.  Reasonable efforts will
-        be made to avoid placing the element such that it overlaps with
-        any bboxes listed in EXCLUSIONS.
-
-        """
-        # FIXME: this needs cleanup
-        boundary = inkex.BoundingBox.new_xywh(
-            self.boundary.left,
-            self.boundary.top,
-            self.boundary.width - rat_bbox.width,
-            self.boundary.height - rat_bbox.height
-            )
-        boundary &= self.boundary
-        inkex.errormsg(
-            f"boundary: {self.boundary!r} - {rat_bbox!r} = {boundary!r}"
-        )
-        inkex.errormsg(
-            f"exclusions: {len(self.exclusions)}"
-        )
-        for ex in self.exclusions:
-            inkex.errormsg(f"ex: {ex!r}")
-                
-
-        for n in count(1):
-            # Compute random position offset
-            x = random.uniform(boundary.left, boundary.right)
-            y = random.uniform(boundary.top, boundary.bottom)
-            new_bbox = inkex.BoundingBox.new_xywh(
-                x, y, rat_bbox.width, rat_bbox.height
-            )
-            if not self.intersects_excluded(new_bbox):
-                break
-            elif n >= max_tries:
-                inkex.errormsg(
-                    "Can not find non-excluded location for rat after %d "
-                    "tries. Giving up." % n)
-                break
-        return x, y
+    if not all(map(looks_like_rat, rats)):
+        raise BadRats(_("Fishy looking rats"))
+            
+    rat_layers = set(map(containing_layer, rats))
+    if len(rat_layers) == 0:
+        raise BadRats(_("No rats selected"))
+    if len(rat_layers) != 1:
+        raise BadRats(_("Rats are not all on the same layer"))
+    layer = rat_layers.pop()
+    if layer is None:
+        raise BadRats(_("Rats are not on a layer"))
+    assert isinstance(layer, inkex.Layer)
+    return layer
 
 
-class HideRats(inkex.EffectExtension):
-    def add_arguments(self, pars):
+def hide_rat(
+        rat: inkex.Use, boundary: inkex.BoundingBox, exclusions: Sequence[inkex.BoundingBox]
+) -> None:
+    rat_placer = RatPlacer(boundary, exclusions)
+    rat_placer.place_rat(rat)
+    
+
+class HideRats(inkex.EffectExtension):  # type: ignore
+    def add_arguments(self, pars: ArgumentParser) -> None:
         pars.add_argument("--tab")
         pars.add_argument("--restart", type=inkex.Boolean)
         pars.add_argument("--newblind", type=inkex.Boolean)
 
-    def get_page_boundary(self):
-        svg = self.document.getroot()
-        inkex.errormsg(f"page_boundary: {svg.get_page_bbox()!r}")
-        return svg.get_page_bbox()
+    def effect(self) -> None:
+        with debug.debugger(self.svg):
+            debug.clear()
+            with text_bbox_hack(self.svg):
+                try:
+                    self._effect()
+                except BadRats as exc:
+                    inkex.errormsg(exc)
 
-    def get_rat_layer(self, rats):
-        rat_layers = set(map(containing_layer, rats))
-        if len(rat_layers) == 0:
-            raise RuntimeError("No rats selected")
-        if len(rat_layers) != 1:
-            raise RuntimeError("Rats are not all on the same layer")
-        layer = rat_layers.pop()
-        if layer is None:
-            raise RuntimeError("Rats are not on a layer")
-        return layer
-
-    def clone_blind(self, rat_layer, rats):
-        new_rats = set()
-
-        def _clone(elem):
-            attrib = dict(elem.attrib)
-            attrib.pop('id', None)
-            copy = etree.Element(elem.tag, attrib)
-            copy.text = elem.text
-            copy.tail = elem.tail
-            copy[:] = map(_clone, elem)
-            if elem in rats:
-                new_rats.add(copy)
-            return copy
-            
-        new_layer = _clone(rat_layer)
-
-        # compute name for new layer
-        names = set()
-        max_idx = 0
-        for label in rat_layer.xpath(
-                "../svg:g[@inkscape:groupmode='layer']/@inkscape:label",
-                namespaces=NSMAP
-        ):
-            m = re.match(r'^(\[o.*?\].*?)\s+(\d+)\s*$', label)
-            if m:
-                name, idx = m.groups()
-                names.add(name)
-                max_idx = max(max_idx, int(idx))
-        if len(names) == 1:
-            name = names.pop()
-        else:
-            name = 'Blind'
-        new_layer.attrib[INKSCAPE_LABEL] = "%s %d" % (name, max_idx + 1)
-
-        rat_layer.getparent().insert(0, new_layer)
-        rat_layer.attrib['style'] = 'display:none'
-        return new_rats
-        
-    def effect(self):
+    def _effect(self) -> None:
         rats = self.svg.selection
-        rat_layer = self.get_rat_layer(rats)
-        assert rat_layer.tag == SVG_G
+        rat_layer = find_rat_layer(rats)
 
-        guide_layer = RatGuide(self.document,
-                               self.get_page_boundary(),
-                               parent_layer=containing_layer(rat_layer))
+        guide_layer = RatGuide(
+            find_exclusions(self.svg),
+            parent_layer=containing_layer(rat_layer)
+        )
         if self.options.restart or self.options.newblind:
-            # FIXME:
             guide_layer.reset()
-
         if self.options.newblind:
-            rats = self.clone_blind(rat_layer, rats)
+            rat_layer, rats = clone_rat_layer(rat_layer, rats)
 
-        bounds = guide_layer.get_boundary()
-        exclusions = guide_layer.get_exclusions()
-        rat_placer = RatPlacer(bounds, exclusions)
-
+        boundary = get_rat_boundary(self.svg)
         for rat in rats:
-            #rat = Element(el)
-            rat_placer.place_rat(rat)
-            # FIXME: transform
-            bbox = rat.bounding_box(transform=None)
-            guide_layer.add_exclusion(bbox)
-            rat_placer.add_exclusion(bbox)
+            hide_rat(rat, boundary, guide_layer.exclusions)
+            guide_layer.add_exclusion(bounding_box(rat))
 
 
 if __name__ == '__main__':
