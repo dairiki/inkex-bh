@@ -2,7 +2,6 @@
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
   <_name>Count Symbols</_name>
   <id>org.dairiki.bh.count-symbols</id>
-  <dependency type="executable" location="extensions">inkex.py</dependency>
   <param name="tab" type="notebook">
     <page name="Options" _gui-text="Options">
       <_param name="include-hidden"

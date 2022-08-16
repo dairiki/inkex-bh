@@ -69,7 +69,7 @@ disable = [
 ]
 
 [tool.mypy]
-files = "$MYPY_CONFIG_FILE_DIR"
+files = "$MYPY_CONFIG_FILE_DIR/barnhunt"
 
 plugins = [
 ]
