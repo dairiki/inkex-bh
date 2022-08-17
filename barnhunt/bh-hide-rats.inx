@@ -21,7 +21,7 @@ The area that the elements are distributed to is taken to be the bounding box of
 Any elements tag with attribute bh:rat-placement set to "exclude" define areas where rats will not be placed. (This is done on a best-effort basis, and is not guaranteed.)</_param>
     </page>
   </param>
-  <effect>
+  <effect needs-live-preview="false">
     <object-type>all</object-type>
     <effects-menu>
       <submenu _name="Barn Hunt"/>

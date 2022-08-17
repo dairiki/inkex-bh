@@ -1,5 +1,5 @@
 #! /usr/bin/python
-# Copyright (C) 2019 Geoffrey T. Dairiki <dairiki@dairiki.org>
+# Copyright (C) 2019—2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
 ''' Count symbol usage
 
 '''
@@ -8,8 +8,6 @@ from argparse import ArgumentParser
 from typing import Counter
 from typing import Iterable
 from typing import TextIO
-
-from lxml import etree
 
 import inkex
 from inkex.localization import inkex_gettext as _
@@ -25,7 +23,6 @@ BH_COUNT_AS = f"{{{NSMAP['bh']}}}count-as"
 
 @functools.lru_cache(maxsize=None)
 def _count_symbols1(use: inkex.Use) -> Counter[str]:
-    # FIXME: memoize?
     href = use.href
     if href is None:
         xml_id = use.get("xlink:href")
@@ -38,19 +35,20 @@ def _count_symbols1(use: inkex.Use) -> Counter[str]:
     if href.tag == SVG_SYMBOL:
         symbol = href.get(BH_COUNT_AS, f"#{href.eid}")
         return Counter((symbol,))
-    else:
-        return count_symbols(
-            href.xpath(
-                "descendant-or-self::svg:use[starts-with(@xlink:href,'#')]",
-                namespaces=NSMAP
-            )
+
+    return count_symbols(
+        href.xpath(
+            "descendant-or-self::svg:use[starts-with(@xlink:href,'#')]",
+            namespaces=NSMAP
         )
+    )
 
 
 def count_symbols(uses: Iterable[inkex.Use]) -> Counter[str]:
     """Compute counts of symbols referenced by a number of svg:use elements.
 
-    Returns a ``collections.Counter`` instance containing reference counts of symbols.
+    Returns a ``collections.Counter`` instance containing reference
+    counts of symbols.
 
     """
     return sum(map(_count_symbols1, uses), Counter())
@@ -63,7 +61,7 @@ class CountSymbols(inkex.OutputExtension):  # type: ignore
 
     def save(self, stream: TextIO) -> None:
         pass
-    
+
     def effect(self) -> None:
         document = self.document
 

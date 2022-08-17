@@ -5,11 +5,7 @@
 import random
 import re
 from argparse import ArgumentParser
-from collections import namedtuple
-from contextlib import contextmanager
-from functools import reduce, update_wrapper
-from itertools import chain
-from itertools import count
+from functools import reduce
 from operator import add
 from typing import cast
 from typing import Iterator
@@ -19,13 +15,12 @@ from typing import Set
 from typing import Sequence
 from typing import Tuple
 
-from lxml.etree import XPath
-
 import inkex
 from inkex.localization import inkex_gettext as _
 
 import bh_debug as debug
 from bh_inkex_bugs import text_bbox_hack
+import bh_typing as types
 
 
 SVG_USE = inkex.addNS('use', 'svg')
@@ -48,8 +43,36 @@ def _xp_str(s: str) -> str:
     return f"concat({','.join(map(_xp_str, strs))})"
 
 
+def _compose(
+        x: types.TransformLike, y: types.TransformLike
+) -> inkex.Transform:
+    """ Compose two inkex.Transforms.
+
+    This version works with Inkscape version 1.2 and above.
+    """
+    return inkex.Transform(x) @ y
+
+
+def _compat_compose(
+        x: types.TransformLike, y: types.TransformLike
+) -> inkex.Transform:
+    """ Compose two inkex.Transforms.
+
+    This version works with Inkscapes before version 1.2 whose Transforms do
+    not support __matmul__.
+    """
+    return inkex.Transform(x) * y
+
+
+if not hasattr(inkex.Transform, "__matmul__"):
+    # Inkscape < 1.2
+    _compose = _compat_compose  # noqa: F811
+
+
 def containing_layer(elem: inkex.BaseElement) -> Optional[inkex.Layer]:
-    """Return svg:g element for the layer containing elem or None if there is no such layer.
+    """ Return svg:g element for the layer containing elem or None if there
+    is no such layer.
+
     """
     layers = elem.xpath(
         "./ancestor::svg:g[@inkscape:groupmode='layer'][position()=1]",
@@ -67,8 +90,12 @@ def bounding_box(elem: inkex.BaseElement) -> inkex.BoundingBox:
 
 class RatGuide:
     GuideMode = Literal["exclusion", "notation"]
-                   
-    def __init__(self, exclusions: Sequence[inkex.BoundingBox], parent_layer: inkex.Layer):
+
+    def __init__(
+            self,
+            exclusions: Sequence[inkex.BoundingBox],
+            parent_layer: inkex.Layer
+    ):
         self.exclusions = list(exclusions)
 
         existing = parent_layer.xpath(".//svg:g[@bh:rat-guide-mode='layer']",
@@ -77,7 +104,7 @@ class RatGuide:
             self.guide_layer = existing[0]
             self._delete_rects("notation")
         else:
-            layer = inkex.Layer.new('[h] {}'.format(_('Rat Placement Guides')))
+            layer = inkex.Layer.new(f"[h] {_('Rat Placement Guides')}")
             layer.set_sensitive(False)
             layer.set(BH_RAT_GUIDE_MODE, 'layer')
             parent_layer.append(layer)
@@ -97,7 +124,6 @@ class RatGuide:
                 namespaces=NSMAP
         ):
             self.exclusions.append(bounding_box(elem))
-        
 
     def reset(self) -> None:
         self._delete_rects("exclusion")
@@ -124,7 +150,9 @@ class RatGuide:
     }
 
     def _add_rect(self, bbox: inkex.BoundingBox, mode: GuideMode) -> None:
-        rect = inkex.Rectangle.new(bbox.left, bbox.top, bbox.width, bbox.height)
+        rect = inkex.Rectangle.new(
+            bbox.left, bbox.top, bbox.width, bbox.height
+        )
         rect.set(BH_RAT_GUIDE_MODE, mode)
         rect.style = self.STYLES.get(mode, self.DEFAULT_STYLE)
         self.guide_layer.append(rect)
@@ -137,8 +165,12 @@ class RatGuide:
             el.getparent().remove(el)
 
 
-class RatPlacer(object):
-    def __init__(self, boundary: inkex.BoundingBox, exclusions: Sequence[inkex.BoundingBox]):
+class RatPlacer:
+    def __init__(
+            self,
+            boundary: inkex.BoundingBox,
+            exclusions: Sequence[inkex.BoundingBox]
+    ):
         self.boundary = boundary
         self.exclusions = exclusions
 
@@ -150,6 +182,7 @@ class RatPlacer(object):
         newpos = self.random_position(rat_bbox)
 
         # Map positions from document to element
+        # pylint: disable=unnecessary-dunder-call
         inverse_parent_transform = parent_transform.__neg__()
         p2 = inverse_parent_transform.apply_to_point(newpos)
         p1 = inverse_parent_transform.apply_to_point(rat_bbox.minimum)
@@ -180,10 +213,11 @@ class RatPlacer(object):
                 random.uniform(x0, x1), random.uniform(y0, y1)
             )
 
-        for n in range(max_tries):
+        for n in range(max_tries):  # pylint: disable=unused-variable
             pos = random_pos()
-            new_bbox = inkex.BoundingBox.new_xywh(
-                pos.x, pos.y, rat_bbox.width, rat_bbox.height
+            new_bbox = inkex.BoundingBox(
+                (pos.x, pos.x + rat_bbox.width),
+                (pos.y, pos.y + rat_bbox.height)
             )
             if not self.intersects_excluded(new_bbox):
                 break
@@ -216,7 +250,7 @@ def _clone_layer(
         if elem in selected:
             cloned_selected.add(copy)
         return copy
-            
+
     return clone(layer), cloned_selected
 
 
@@ -248,8 +282,9 @@ def clone_rat_layer(
     rat_layer.set_sensitive(False)
     return new_layer, new_rats
 
+
 def _iter_exclusions(
-        elem: inkex.BaseElement, transform: Optional[inkex.Transform] = None
+        elem: inkex.BaseElement, transform: types.TransformLike = None
 ) -> Iterator[inkex.BoundingBox]:
     if elem.getparent() is None:
         base = "/svg:svg/*[not(self::svg:defs)]/descendant-or-self::"
@@ -268,11 +303,11 @@ def _iter_exclusions(
     for el in elem.xpath(path, namespaces=NSMAP):
         if el.get(BH_RAT_PLACEMENT) == 'exclude':
             yield el.bounding_box(
-                transform @ el.getparent().composed_transform()
+                _compose(transform, el.getparent().composed_transform())
             )
         else:
             assert el.tag == SVG_USE
-            local_tfm = inkex.Transform(transform) @ el.composed_transform()
+            local_tfm = _compose(transform, el.composed_transform())
             href = el.href
             if href is None:
                 inkex.errormsg(f"Invalid href={el.get('xlink:href')!r} in use")
@@ -313,12 +348,14 @@ def find_rat_layer(rats: Sequence[inkex.BaseElement]) -> inkex.Layer:
     def looks_like_rat(elem: inkex.BaseElement) -> bool:
         return (
             elem.tag == SVG_USE
-            and re.match(r"#(rat|.*tube)", elem.get("xlink:href", "")) is not None
+            and re.match(
+                r"#(rat|.*tube)", elem.get("xlink:href", "")
+            ) is not None
         )
 
     if not all(map(looks_like_rat, rats)):
         raise BadRats(_("Fishy looking rats"))
-            
+
     rat_layers = set(map(containing_layer, rats))
     if len(rat_layers) == 0:
         raise BadRats(_("No rats selected"))
@@ -332,11 +369,13 @@ def find_rat_layer(rats: Sequence[inkex.BaseElement]) -> inkex.Layer:
 
 
 def hide_rat(
-        rat: inkex.Use, boundary: inkex.BoundingBox, exclusions: Sequence[inkex.BoundingBox]
+        rat: inkex.Use,
+        boundary: inkex.BoundingBox,
+        exclusions: Sequence[inkex.BoundingBox],
 ) -> None:
     rat_placer = RatPlacer(boundary, exclusions)
     rat_placer.place_rat(rat)
-    
+
 
 class HideRats(inkex.EffectExtension):  # type: ignore
     def add_arguments(self, pars: ArgumentParser) -> None:
@@ -345,13 +384,13 @@ class HideRats(inkex.EffectExtension):  # type: ignore
         pars.add_argument("--newblind", type=inkex.Boolean)
 
     def effect(self) -> None:
-        with debug.debugger(self.svg):
-            debug.clear()
-            with text_bbox_hack(self.svg):
-                try:
-                    self._effect()
-                except BadRats as exc:
-                    inkex.errormsg(exc)
+        # with debug.debugger(self.svg):
+        #     debug.clear()
+        with text_bbox_hack(self.svg):
+            try:
+                self._effect()
+            except BadRats as exc:
+                inkex.errormsg(exc)
 
     def _effect(self) -> None:
         rats = self.svg.selection

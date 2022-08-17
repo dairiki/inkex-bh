@@ -1,16 +1,11 @@
 from contextlib import contextmanager
 from contextlib import ExitStack
 from typing import Iterator
-from typing import TYPE_CHECKING
 
 import inkex
-from lxml import etree
 
-# FIXME: move
-if TYPE_CHECKING:
-    SvgElementTree = etree._ElementTree[inkex.SvgDocumentElement]
-else:
-    SvgElementTree = None
+import bh_typing as types
+
 
 def inkex_tspan_bounding_box_is_buggy() -> bool:
     # As of Inkscape 1.2.1, inkex puts bbox.top at y and bbox.bottom
@@ -23,7 +18,7 @@ def inkex_tspan_bounding_box_is_buggy() -> bool:
 
 
 @contextmanager
-def negate_fontsizes(document: SvgElementTree) -> Iterator[None]:
+def negate_fontsizes(document: types.SvgElementTree) -> Iterator[None]:
     """ Temporarily negate all text font-sizes.
 
     This is to work around a bug in inkex.Tspan.
@@ -34,7 +29,7 @@ def negate_fontsizes(document: SvgElementTree) -> Iterator[None]:
             elem.set("x-save-style", elem.get("style", None))
             # XXX: should use elem.to_dimensionless?
             fontsize = elem.uutounit(elem.style.get('font-size'))
-            #fontsize = elem.to_dimensionless(elem.style.get('font-size'))
+            # fontsize = elem.to_dimensionless(elem.style.get('font-size'))
             elem.style["font-size"] = -fontsize
             mangled.append(elem)
 
@@ -46,7 +41,7 @@ def negate_fontsizes(document: SvgElementTree) -> Iterator[None]:
 
 
 @contextmanager
-def text_bbox_hack(document: SvgElementTree) -> Iterator[None]:
+def text_bbox_hack(document: types.SvgElementTree) -> Iterator[None]:
     """ Hack up document to work-around buggy text bbox computation in inkex.
     """
     with ExitStack() as stack:

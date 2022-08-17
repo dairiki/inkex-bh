@@ -40,8 +40,8 @@ addopts = "--strict-markers"
 ignore = [".git"]
 
 [tool.pylint.FORMAT]
-max-line-length = 91
-max-module-lines = 2000
+#max-line-length = 91
+#max-module-lines = 2000
 
 [tool.pylint.DESIGN]
 max-attributes = 20
@@ -52,27 +52,13 @@ max-returns = 8
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = [
-    "redundant-u-string-prefix",
-    "consider-using-f-string",
-    "missing-docstring",
-    "unused-argument",
-    "redefined-outer-name",
-    "invalid-name",
-    "protected-access",
-    "fixme",
-    "broad-except",
-    "redefined-builtin",
-    "too-many-arguments",
-    "too-few-public-methods",
-    "too-many-public-methods",
-    "duplicate-code",
+     "missing-docstring",
+     "invalid-name",
+     "fixme",
 ]
 
 [tool.mypy]
 files = "$MYPY_CONFIG_FILE_DIR/barnhunt"
-
-plugins = [
-]
 
 show_error_codes = true
 error_summary = true
@@ -85,7 +71,6 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = [
-    "inkex",
     "inkex.*",
 ]
 ignore_missing_imports = true
