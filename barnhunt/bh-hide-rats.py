@@ -21,16 +21,12 @@ from inkex.localization import inkex_gettext as _
 import bh_debug as debug
 from bh_inkex_bugs import text_bbox_hack
 import bh_typing as types
+from bh_constants import NSMAP
+from bh_constants import BH_RAT_GUIDE_MODE
+from bh_constants import BH_RAT_PLACEMENT
 
 
 SVG_USE = inkex.addNS('use', 'svg')
-
-NSMAP = {
-    **inkex.NSS,
-    "bh": "http://dairiki.org/barnhunt/inkscape-extensions",
-}
-BH_RAT_PLACEMENT = f"{{{NSMAP['bh']}}}rat-placement"
-BH_RAT_GUIDE_MODE = f"{{{NSMAP['bh']}}}rat-guide-mode"
 
 
 def _xp_str(s: str) -> str:

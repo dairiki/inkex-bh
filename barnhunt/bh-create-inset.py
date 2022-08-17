@@ -24,13 +24,8 @@ import inkex
 from inkex.command import INKSCAPE_EXECUTABLE_NAME
 from inkex.localization import inkex_gettext as _
 
-
-NSMAP = {
-    **inkex.NSS,
-    "bh": "http://dairiki.org/barnhunt/inkscape-extensions",
-}
-BH_INSET_EXPORT_ID = f"{{{NSMAP['bh']}}}inset--export-id"
-BH_INSET_VISIBLE_LAYERS = f"{{{NSMAP['bh']}}}inset--visible-layers"
+from bh_constants import BH_INSET_EXPORT_ID
+from bh_constants import BH_INSET_VISIBLE_LAYERS
 
 
 def data_url(data: bytes, content_type: str = "application/binary") -> str:

@@ -12,13 +12,10 @@ from typing import TextIO
 import inkex
 from inkex.localization import inkex_gettext as _
 
-SVG_SYMBOL = inkex.addNS('symbol', 'svg')
+from bh_constants import NSMAP
+from bh_constants import BH_COUNT_AS
 
-NSMAP = {
-    **inkex.NSS,
-    "bh": "http://dairiki.org/barnhunt/inkscape-extensions",
-}
-BH_COUNT_AS = f"{{{NSMAP['bh']}}}count-as"
+SVG_SYMBOL = inkex.addNS('symbol', 'svg')
 
 
 @functools.lru_cache(maxsize=None)
