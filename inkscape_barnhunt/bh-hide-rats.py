@@ -33,12 +33,12 @@ from typing import Tuple
 import inkex
 from inkex.localization import inkex_gettext as _
 
-import bh_debug as debug
-from bh_inkex_bugs import text_bbox_hack
-import bh_typing as types
-from bh_constants import NSMAP
-from bh_constants import BH_RAT_GUIDE_MODE
-from bh_constants import BH_RAT_PLACEMENT
+from inkex_bh import debug
+from inkex_bh.inkex_bugs import text_bbox_hack
+from inkex_bh import typing as types
+from inkex_bh.constants import NSMAP
+from inkex_bh.constants import BH_RAT_GUIDE_MODE
+from inkex_bh.constants import BH_RAT_PLACEMENT
 
 
 SVG_USE = inkex.addNS("use", "svg")

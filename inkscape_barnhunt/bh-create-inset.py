@@ -37,8 +37,8 @@ import inkex
 from inkex.command import INKSCAPE_EXECUTABLE_NAME
 from inkex.localization import inkex_gettext as _
 
-from bh_constants import BH_INSET_EXPORT_ID
-from bh_constants import BH_INSET_VISIBLE_LAYERS
+from inkex_bh.constants import BH_INSET_EXPORT_ID
+from inkex_bh.constants import BH_INSET_VISIBLE_LAYERS
 
 
 def data_url(data: bytes, content_type: str = "application/binary") -> str:

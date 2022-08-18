@@ -26,8 +26,8 @@ from typing import TextIO
 import inkex
 from inkex.localization import inkex_gettext as _
 
-from bh_constants import NSMAP
-from bh_constants import BH_COUNT_AS
+from inkex_bh.constants import NSMAP
+from inkex_bh.constants import BH_COUNT_AS
 
 SVG_SYMBOL = inkex.addNS("symbol", "svg")
 

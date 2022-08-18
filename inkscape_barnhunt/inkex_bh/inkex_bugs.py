@@ -8,7 +8,7 @@ from typing import Iterator
 
 import inkex
 
-import bh_typing as types
+from . import typing as types
 
 
 def inkex_tspan_bounding_box_is_buggy() -> bool:

@@ -1,5 +1,5 @@
 [project]
-name = "inkscape-barnhunt"
+name = "inkex-bh"
 description = "Inkscape extensions for Barn Hunt"
 readme = "README.md"
 keywords = ["inkscape", "barn hunt", "barnhunt"]
@@ -30,7 +30,8 @@ requires = ["setuptools>=61", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["inkscape_barnhunt"]
+where = ["inkscape_barnhunt"]
+include = ["inkex_bh"]
 
 [tool.setuptools_scm]
 
