@@ -20,7 +20,7 @@ classifiers = [
 ]
 dynamic = ["version"]
 # [project.urls]
-# Homepage = https://github.com/dairiki/inkscape-barnhunt
+# Homepage = https://github.com/dairiki/inkex-bh
 [[project.authors]]
 name = "Jeff Dairiki"
 email = "dairiki@dairiki.org"
@@ -30,8 +30,10 @@ requires = ["setuptools>=61", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["inkscape_barnhunt"]
 include = ["inkex_bh"]
+
+[tool.setuptools.package-data]
+inkex_bh = ["extensions/*.inx", "extensions/*.py"]
 
 [tool.setuptools_scm]
 
@@ -97,7 +99,7 @@ disable = [
 ]
 
 [tool.mypy]
-files = "$MYPY_CONFIG_FILE_DIR/barnhunt"
+files = "$MYPY_CONFIG_FILE_DIR/inkex_bh"
 
 show_error_codes = true
 error_summary = true
@@ -113,3 +115,10 @@ module = [
     "inkex.*",
 ]
 ignore_missing_imports = true
+
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+disallow_untyped_calls = false
