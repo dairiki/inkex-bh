@@ -37,6 +37,7 @@ from inkex.localization import inkex_gettext as _
 
 from .constants import BH_INSET_EXPORT_ID
 from .constants import BH_INSET_VISIBLE_LAYERS
+from .workarounds import mangle_cmd_for_appimage
 
 
 def data_url(data: bytes, content_type: str = "application/binary") -> str:
@@ -104,79 +105,26 @@ def temporary_visibility() -> Iterator[SetVisibilityFunction]:
             elem.set("style", style)
 
 
-def is_appimage_executable(prog: str) -> bool:
-    """Determine whether program belongs to the active AppImage
+def run_command(*cmd: str, verbose: bool = False, missing_ok: bool = False) -> None:
+    """Run an external command.
 
-    Returns true iff ``prog`` resolves to a executable contained with
-    the currently active AppImage.  (If there is no active AppImage
-    returns false.)
-    """
-    executable = shutil.which(prog)
-    if executable is None:
-        return False
+    This goes to some lengths to be able to successfully run an
+    executable (e.g. inkscape) which is provided by a currently active
+    AppImage.
 
-    appdir = os.environ.get("APPDIR", "")
-    if appdir and "APPIMAGE" in os.environ:
-        try:
-            relpath = os.path.relpath(executable, appdir)
-        except ValueError:
-            return False  # different drive on windows
-    return not any(
-        relpath.startswith(f"{os.pardir}{sep}") for sep in (os.sep, os.altsep)
-    )
+    verbose — Write command output to stderr, even when command
+    completes successfully.  Normally output is squelched unless the
+    command exits with a non-zero status.
 
-
-def mangle_cmd_for_appimage(cmd: Sequence[str]) -> tuple[str, ...]:
-    """Mangle the LD_LIBRARY_PATH when running a command from an AppImage.
-
-    When running inkscape (or python?) from an Inkscape AppImage we need to
-    tell ld-linux to used shared libraries from the AppImage.  This mangles
-    the ``cmd`` sequence in order to do that.
+    missing_ok — If executable can not be found, write a warning
+    message, a return without raising an exception.
 
     """
-    # Without these machinations, inkscape seems to mostly run okay,
-    # but, at least, when exporting PNGs produces:
-    #
-    # inkscape: symbol lookup error:
-    #   /tmp/.mount_Inkscag6GeLM/usr/bin/../lib/x86_64-linux-gnu/inkscape/../libcairo.so.2:
-    #   undefined symbol: pixman_image_set_dither
-    #
-    # See the /RunApp script in the Inkscape AppImage itself for an example
-    # of how it runs inkscape.
-
-    appdir = os.environ["APPDIR"]
-    executable = shutil.which(cmd[0])
-    assert executable is not None
-
-    # XXX: is hard-coded good enough for these??
-    platform = "x86_64-linux-gnu"
-    ld_linux = os.path.join(appdir, "lib", platform, "ld-linux-x86-64.so.2")
-    if not os.path.isfile(ld_linux):
-        raise RuntimeError("Can not find ld-linux in AppImage")
-
-    libpath = [
-        os.path.join(appdir, "lib", platform),
-        os.path.join(appdir, "usr/lib", platform),
-        os.path.join(appdir, "usr/lib"),
-    ]
-
-    return (
-        ld_linux,
-        "--inhibit-cache",
-        "--library-path",
-        ":".join(libpath),
-        executable,
-        *cmd[1:],
-    )
-
-
-def run(cmd: Sequence[str], verbose: bool = False, missing_ok: bool = False) -> None:
     if missing_ok and not shutil.which(cmd[0]):
         inkex.errormsg(_("WARNING: Can not find executable for {}").format(cmd[0]))
         return
 
-    if is_appimage_executable(cmd[0]):
-        cmd = mangle_cmd_for_appimage(cmd)
+    cmd = mangle_cmd_for_appimage(cmd)
 
     try:
         proc = subprocess.run(
@@ -214,23 +162,21 @@ class CreateInset(inkex.Effect):  # type: ignore[misc]
             with open(input_svg, "wb") as fp:
                 self.document.write(fp)
 
-            run(
-                [
-                    INKSCAPE_EXECUTABLE_NAME,
-                    f"--export-filename={output_png}",
-                    "--export-type=png",
-                    f"--export-id={export_id}",
-                    f"--export-background={opt.background.to_rgb()}",
-                    f"--export-background-opacity={opt.background.alpha:f}",
-                    f"--export-dpi={opt.scale * opt.dpi:f}",
-                    input_svg,
-                ],
+            run_command(
+                INKSCAPE_EXECUTABLE_NAME,
+                f"--export-filename={output_png}",
+                "--export-type=png",
+                f"--export-id={export_id}",
+                f"--export-background={opt.background.to_rgb()}",
+                f"--export-background-opacity={opt.background.alpha:f}",
+                f"--export-dpi={opt.scale * opt.dpi:f}",
+                input_svg,
                 verbose=opt.verbose,
             )
 
             if opt.optipng_level >= 0:
-                run(
-                    ["optipng", "-o", f"{opt.optipng_level}", output_png],
+                run_command(
+                    *("optipng", "-o", f"{opt.optipng_level}", output_png),
                     missing_ok=True,
                     verbose=opt.verbose,
                 )
