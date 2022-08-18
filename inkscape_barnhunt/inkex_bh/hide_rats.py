@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -33,12 +32,12 @@ from typing import Tuple
 import inkex
 from inkex.localization import inkex_gettext as _
 
-from inkex_bh import debug
-from inkex_bh.inkex_bugs import text_bbox_hack
-from inkex_bh import typing as types
-from inkex_bh.constants import NSMAP
-from inkex_bh.constants import BH_RAT_GUIDE_MODE
-from inkex_bh.constants import BH_RAT_PLACEMENT
+from . import debug
+from .inkex_bugs import text_bbox_hack
+from . import typing as types
+from .constants import NSMAP
+from .constants import BH_RAT_GUIDE_MODE
+from .constants import BH_RAT_PLACEMENT
 
 
 SVG_USE = inkex.addNS("use", "svg")

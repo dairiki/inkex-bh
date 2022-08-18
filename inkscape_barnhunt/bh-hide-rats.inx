@@ -48,6 +48,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
       </label>
     </page>
   </param>
+  <param name="module" type="string" gui-hidden="true">inkex_bh.hide_rats</param>
   <effect needs-live-preview="false">
     <object-type>all</object-type>
     <effects-menu>
@@ -55,6 +56,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
     </effects-menu>
   </effect>
   <script>
-    <command location="inx" interpreter="python">bh-hide-rats.py</command>
+    <command location="inx" interpreter="python">run-module.py</command>
   </script>
 </inkscape-extension>

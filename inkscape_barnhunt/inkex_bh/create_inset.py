@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -13,7 +12,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 """ Export bbox of selection to PNG image
 
 """
@@ -37,8 +35,8 @@ import inkex
 from inkex.command import INKSCAPE_EXECUTABLE_NAME
 from inkex.localization import inkex_gettext as _
 
-from inkex_bh.constants import BH_INSET_EXPORT_ID
-from inkex_bh.constants import BH_INSET_VISIBLE_LAYERS
+from .constants import BH_INSET_EXPORT_ID
+from .constants import BH_INSET_VISIBLE_LAYERS
 
 
 def data_url(data: bytes, content_type: str = "application/binary") -> str:
