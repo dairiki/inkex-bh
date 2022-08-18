@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <name>Set Random Seed</name>
+  <id>org.dairiki.bh.random-seed</id>
+  <param name="tab" type="notebook">
+    <page name="Options" gui-text="Options">
+      <param name="force-reseed"
+              type="bool"
+              gui-text="(Re-)set random seed, even if one is already set."
+              >false</param>
+    </page>
+    <page name="Help" gui-text="Help">
+      <label appearance="header">
+        Set Random Seed in SVG file
+      </label>
+      <spacer />
+      <label>
+        This sets a random seed in the drawing.  That random seed is used
+        by the barnhunt program when expanding template strings
+        during export of PDFs.  Setting a fixed random-seed in this
+        manner ensures that things like the Master rat counts are stable
+        when the drawing is edited.
+      </label>
+      <spacer />
+      <label>
+        If you copy the SVG to create a new course. Make sure to reinitialize the
+        random seed, or it may get the same rat counts as the course you copied from.
+      </label>
+    </page>
+  </param>
+  <param name="module" type="string" gui-hidden="true">random_seed</param>
+  <effect needs-live-preview="false">
+    <object-type>all</object-type>
+    <effects-menu>
+      <submenu name="Barn Hunt"/>
+    </effects-menu>
+  </effect>
+  <script>
+    <command location="inx" interpreter="python">run-module.py</command>
+  </script>
+</inkscape-extension>

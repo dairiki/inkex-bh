@@ -27,7 +27,7 @@ Inkscape versions 1.1.2 and 1.2.1.
 
 ## What’s Here?
 
-Currently there are three extensions.
+Currently there are four extensions.
 
 ### Count Symbols
 
@@ -89,19 +89,34 @@ The third extension is used to randomize the position of rat tubes on rat maps.
 
 Instructions pending... :-/
 
+### Set Random Seed
+
+This sets or updates a random number stored in a custom attribute out
+the `<svg>` element of the drawing.  This number is used by the
+[barnhunt](https://github.com/barnhunt/barnhunt) program to seed the
+pseudo-random number generator used when expanding text templates.
+Setting it to a unique number ensure, e.g., that the Master random rat
+numbers come out random, but still reproduceable.
+
+When one copies an existing `.svg` file to use a template for a new
+trial, one should run this plugin, with the _force-reseed_ checkbox
+checked, to ensure that the copied file gets a new, unique random
+seed.
+
 ----
 
 ## Installation
 
-It's a little h<del>o</del><ins>ac</ins>key, but these extensions
-should be installable using pip.
+It's a little h<del>o</del><ins>ac</ins>key to use pip in this way,
+but these extensions should be installable using pip.
 
 ```
 pip install --target "$(inkscape --user-data-directory)/extensions" inkex_bh
 ```
 
-Alternatively, it should work to simply symlink or copy the inkex_bh directory from
-the source distribution (or git repository) to the user `extensions` directory.
+Alternatively, it should work to simply symlink or copy the inkex_bh
+directory from the source distribution (or git repository) to the user
+`extensions` directory.
 
 ----
 

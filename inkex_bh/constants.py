@@ -1,10 +1,14 @@
 # Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
 import inkex
+from lxml.etree import register_namespace  # type: ignore[attr-defined]
 
 NSMAP = {
     **inkex.NSS,
     "bh": "http://dairiki.org/barnhunt/inkscape-extensions",
 }
+
+register_namespace("bh", NSMAP["bh"])
+
 
 #################################################################
 #
@@ -51,3 +55,17 @@ BH_INSET_EXPORT_ID = f"{{{NSMAP['bh']}}}inset--export-id"
 # created <svg:image> tag to indicate the ids of the layers which
 # were visible when the image was created.
 BH_INSET_VISIBLE_LAYERS = f"{{{NSMAP['bh']}}}inset--visible-layers"
+
+
+#################################################################
+#
+# Custom attributes used by random-seed extension
+
+# bh:random-seed="42" This attribute is placed on the
+# created <svg:svg> tag to specify a random seed which is used
+# by the barnhunt program when expanding template strings
+# during export of PDFs.  Setting a fixed random-seed in this
+# may ensures that things like the Master rat counts are stable
+# when the drawing is edited.
+
+BH_RANDOM_SEED = f"{{{NSMAP['bh']}}}random-seed"

@@ -81,7 +81,9 @@ addopts = "--strict-markers"
 # pylint
 #
 [tool.pylint.MASTER]
-ignore = [".git"]
+ignore = [".git", "tests"]
+ignore-paths = [".*/tests/.*"]
+extension-pkg-allow-list = ["lxml"]
 
 [tool.pylint.FORMAT]
 #max-line-length = 91
