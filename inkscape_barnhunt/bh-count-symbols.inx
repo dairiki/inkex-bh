@@ -16,25 +16,29 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
-  <_name>Count Symbols</_name>
+  <name>Count Symbols</name>
   <id>org.dairiki.bh.count-symbols</id>
   <param name="tab" type="notebook">
-    <page name="Options" _gui-text="Options">
-      <_param name="include-hidden"
-              type="boolean"
-              _gui-text="Include symbols on hidden layers in count"
-              >false</_param>
+    <page name="Options" gui-text="Options">
+      <param name="include-hidden"
+              type="bool"
+              gui-text="Include symbols on hidden layers in count"
+              >false</param>
     </page>
-    <page name="Help" _gui-text="Help">
-      <_param name="texthelp" type="description">Count symbols (e.g. bales).
-
-This counts visible symbols (i.e. those not on hidden layers.)</_param>
+    <page name="Help" gui-text="Help">
+      <label appearance="header">
+        Count symbols (e.g. bales)
+      </label>
+      <spacer />
+      <label>
+        By default, this counts visible symbols (i.e. those not on hidden layers.)
+      </label>
     </page>
   </param>
   <effect needs-live-preview="false">
     <object-type>all</object-type>
     <effects-menu>
-      <submenu _name="Barn Hunt"/>
+      <submenu name="Barn Hunt"/>
     </effects-menu>
   </effect>
   <script>

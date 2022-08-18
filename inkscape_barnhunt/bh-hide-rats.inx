@@ -16,31 +16,42 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
-  <_name>Randomize rat positions</_name>
+  <name>Randomize Rat Positions</name>
   <id>org.dairiki.bh.hide-rats</id>
   <param name="tab" type="notebook">
-    <page name="Options" _gui-text="Options">
-      <_param name="restart"
-              type="boolean"
-              _gui-text="Restart. Delete exisiting auto-generated exclude regions"
-              >false</_param>
-      <_param name="newblind"
-              type="boolean"
-              _gui-text="Clone rat layer. (Create new blind and restart.)"
-              >false</_param>
+    <page name="Options" gui-text="Options">
+      <param name="restart"
+             type="boolean"
+             gui-text="Restart. Delete exisiting auto-generated exclude regions"
+             >false</param>
+      <param name="newblind"
+             type="boolean"
+             gui-text="Clone rat layer. (Create new blind and restart.)"
+             >false</param>
     </page>
-    <page name="Help" _gui-text="Help">
-      <_param name="texthelp" type="description">Randomize the position of selected elements.
-
-The area that the elements are distributed to is taken to be the bounding box of all elements with the bh:rat-placement attribute set to "boundary".  (Please not that clipping is not taken into account when computing the bounding box.)
-
-Any elements tag with attribute bh:rat-placement set to "exclude" define areas where rats will not be placed. (This is done on a best-effort basis, and is not guaranteed.)</_param>
+    <page name="Help" gui-text="Help">
+      <label appearance="header">
+        Randomize the position of selected elements
+      </label>
+      <spacer />
+      <label>
+        The area that the elements are distributed to is taken to be
+        the bounding box of all elements with the bh:rat-placement
+        attribute set to "boundary".  (Please not that clipping is not
+        taken into account when computing the bounding box.)
+      </label>
+      <spacer />
+      <label>
+        Any elements tag with attribute bh:rat-placement set to
+        "exclude" define areas where rats will not be placed. (This is
+        done on a best-effort basis, and is not guaranteed.)
+      </label>
     </page>
   </param>
   <effect needs-live-preview="false">
     <object-type>all</object-type>
     <effects-menu>
-      <submenu _name="Barn Hunt"/>
+      <submenu name="Barn Hunt"/>
     </effects-menu>
   </effect>
   <script>
