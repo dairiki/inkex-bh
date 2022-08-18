@@ -33,7 +33,7 @@ import inkex
 from inkex.localization import inkex_gettext as _
 
 from . import debug
-from .inkex_bugs import text_bbox_hack
+from .workarounds import text_bbox_hack
 from . import typing as types
 from .constants import NSMAP
 from .constants import BH_RAT_GUIDE_MODE
