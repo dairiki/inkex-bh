@@ -1,3 +1,13 @@
+# Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
+"""Helpers for debugging the extensions.
+
+These are helpers for debugging. When things are working as they should,
+this code is not normally used.
+
+Currently this module includes some help for drawing temporary boxes
+on the output image for debugging purposes.
+
+"""
 from contextlib import contextmanager
 from typing import Iterator
 from typing import List

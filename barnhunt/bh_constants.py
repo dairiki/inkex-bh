@@ -1,3 +1,4 @@
+# Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
 import inkex
 
 NSMAP = {

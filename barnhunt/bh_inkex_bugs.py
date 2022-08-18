@@ -1,3 +1,7 @@
+# Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
+"""Some code for hacking around bugs in current and past version of inkex.
+
+"""
 from contextlib import contextmanager
 from contextlib import ExitStack
 from typing import Iterator
