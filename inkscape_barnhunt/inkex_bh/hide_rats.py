@@ -12,7 +12,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 """ Randomize the position of selected elements
 
 """
@@ -25,19 +24,19 @@ from typing import cast
 from typing import Iterator
 from typing import Literal
 from typing import Optional
-from typing import Set
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 
 import inkex
 from inkex.localization import inkex_gettext as _
 
 from . import debug
-from .workarounds import text_bbox_hack
 from . import typing as types
-from .constants import NSMAP
 from .constants import BH_RAT_GUIDE_MODE
 from .constants import BH_RAT_PLACEMENT
+from .constants import NSMAP
+from .workarounds import text_bbox_hack
 
 
 SVG_USE = inkex.addNS("use", "svg")

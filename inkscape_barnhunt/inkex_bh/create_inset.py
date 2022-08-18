@@ -20,8 +20,8 @@ from __future__ import annotations
 import base64
 import os
 import shutil
-import subprocess
 import struct
+import subprocess
 import sys
 from argparse import ArgumentParser
 from contextlib import contextmanager
