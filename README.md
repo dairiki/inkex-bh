@@ -93,7 +93,15 @@ Instructions pending... :-/
 
 ## Installation
 
-To be written.
+It's a little h<del>o</del><ins>ac</ins>key, but these extensions
+should be installable using pip.
+
+```
+pip install --target "$(inkscape --user-data-directory)/extensions" inkex_bh
+```
+
+Alternatively, it should work to simply symlink or copy the inkex_bh directory from
+the source distribution (or git repository) to the user `extensions` directory.
 
 ------
 
