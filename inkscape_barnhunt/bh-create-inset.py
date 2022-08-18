@@ -202,8 +202,7 @@ class CreateInset(inkex.Effect):  # type: ignore[misc]
         pars.add_argument("--tab")
         pars.add_argument("--scale", type=float, default=0.5)
         pars.add_argument("--dpi", type=float, default=144.0)
-        pars.add_argument("--background", type=str, default="#ffffff")
-        pars.add_argument("--background-opacity", type=float, default=1.0)
+        pars.add_argument("--background", type=inkex.Color, default="#ffffff")
         pars.add_argument("--optipng-level", type=int, default=2)
         pars.add_argument("--verbose", type=inkex.Boolean, default=False)
 
@@ -220,18 +219,12 @@ class CreateInset(inkex.Effect):  # type: ignore[misc]
             run(
                 [
                     INKSCAPE_EXECUTABLE_NAME,
-                    "--export-filename",
-                    output_png,
-                    "--export-type",
-                    "png",
-                    "--export-id",
-                    export_id,
-                    "--export-background",
-                    opt.background,
-                    "--export-background-opacity",
-                    fmt_f(opt.background_opacity),
-                    "--export-dpi",
-                    fmt_f(opt.scale * opt.dpi),
+                    f"--export-filename={output_png}",
+                    "--export-type=png",
+                    f"--export-id={export_id}",
+                    f"--export-background={opt.background.to_rgb()}",
+                    f"--export-background-opacity={opt.background.alpha:f}",
+                    f"--export-dpi={opt.scale * opt.dpi:f}",
                     input_svg,
                 ],
                 verbose=opt.verbose,
