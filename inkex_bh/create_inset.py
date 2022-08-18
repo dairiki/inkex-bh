@@ -228,7 +228,6 @@ class CreateInset(inkex.Effect):  # type: ignore[misc]
         self.svg.append(image)
 
     def effect(self) -> None:
-        # FIXME: add a way to rebuild all insets in the file
         if len(self.svg.selection) != 1:
             inkex.errormsg(_("You must select exactly one object."))
             sys.exit(1)

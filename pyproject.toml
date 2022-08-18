@@ -1,7 +1,6 @@
 [project]
 name = "inkex-bh"
 description = "Inkscape extensions for Barn Hunt"
-readme = "README.md"
 keywords = ["inkscape", "barn hunt", "barnhunt"]
 license = {text = "GNU GPLv3"}
 requires-python = ">=3.7"
@@ -18,7 +17,7 @@ classifiers = [
     "Topic :: Multimedia :: Graphics :: Editors :: Vector-Based",
     "Typing :: Typed",
 ]
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 # [project.urls]
 # Homepage = https://github.com/dairiki/inkex-bh
 [[project.authors]]
@@ -28,6 +27,10 @@ email = "dairiki@dairiki.org"
 [build-system]
 requires = ["setuptools>=61", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic.readme]
+file = ["README.md", "CHANGES.md"]
+content-type = "text/markdown"
 
 [tool.setuptools.packages.find]
 include = ["inkex_bh"]

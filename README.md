@@ -89,7 +89,7 @@ The third extension is used to randomize the position of rat tubes on rat maps.
 
 Instructions pending... :-/
 
-------
+----
 
 ## Installation
 
@@ -103,7 +103,7 @@ pip install --target "$(inkscape --user-data-directory)/extensions" inkex_bh
 Alternatively, it should work to simply symlink or copy the inkex_bh directory from
 the source distribution (or git repository) to the user `extensions` directory.
 
-------
+----
 
 
 ## What's Elsewhere?
@@ -149,3 +149,5 @@ Kick me if you want to know more.
 
 Jeff Dairiki, BHAJ-221A
 <dairiki@dairiki.org>
+
+----
