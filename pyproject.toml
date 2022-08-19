@@ -18,6 +18,11 @@ classifiers = [
     "Typing :: Typed",
 ]
 dynamic = ["version", "readme"]
+dependencies = [
+    # FIXME: not installable from PyPI?
+    # "inkex",
+    "lxml",
+]
 # [project.urls]
 # Homepage = https://github.com/dairiki/inkex-bh
 [[project.authors]]
@@ -58,17 +63,17 @@ addopts = "--strict-markers"
 #
 # coverage
 #
-#[tool.coverage.paths]
-#paths = [
-#    "lektor",
-#    ".tox/py*/*/lektor",
-#]
+[tool.coverage.paths]
+paths = [
+    "inkex_bh",
+    ".tox/py*/*/inkex_bh",
+]
 
-#[tool.coverage.report]
-#exclude_lines = [
-#    "pragma: no cover",
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
 #    '^\s*\.\.\.\s*$',
-#]
+]
 
 ################################################################
 #

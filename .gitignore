@@ -1,2 +1,5 @@
 *~
 __pycache__/
+/.tox/
+/.coverage
+/inkex_bh.egg-info/
