@@ -1,10 +1,11 @@
 # pylint: disable=redefined-outer-name
-import inspect
-import io
-import os
+# mypy: ignore-errors
+from __future__ import annotations
 
+import inspect
+
+import inkex
 import pytest
-from lxml import etree
 
 from inkex_bh.constants import BH_RANDOM_SEED
 from inkex_bh.constants import NSMAP
@@ -41,27 +42,8 @@ TEST_SVG_TEMPL = inspect.cleandoc(
 
 
 @pytest.fixture
-def effect():
+def effect() -> inkex.InkscapeExtension:
     return RandomSeed()
-
-
-@pytest.fixture
-def run_effect(effect):
-    def run_effect(*cmd):
-        # Dereference any Paths in the command sequence
-        str_cmd = tuple(
-            arg if isinstance(arg, (bytes, str)) else os.fspath(arg) for arg in cmd
-        )
-        outfp = io.BytesIO()
-
-        effect.run(str_cmd, output=outfp)
-
-        if outfp.tell() == 0:
-            return None  # no output
-        outfp.seek(0)
-        return etree.parse(outfp).getroot()
-
-    return run_effect
 
 
 @pytest.fixture
@@ -80,6 +62,9 @@ def test_svg(tmp_path, random_seed):
     return test_svg
 
 
+pytestmark = pytest.mark.usefixtures("assert_no_stdout")
+
+
 def test_adds_seed(test_svg, run_effect):
     out_svg = run_effect(test_svg)
     assert out_svg.get(BH_RANDOM_SEED).isdigit()
@@ -91,6 +76,9 @@ def test_adds_ns_decl(test_svg, run_effect):
 
 
 @pytest.mark.parametrize("random_seed", [42])
-def test_leaves_existing_seed(test_svg, run_effect):
+def test_leaves_existing_seed(test_svg, run_effect, capsys):
     svg = run_effect(test_svg)
     assert svg is None
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "Random seed is already set" in output.err
