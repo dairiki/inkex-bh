@@ -70,17 +70,17 @@ This will create an image. It will be created on top of all other
 layers in the drawing. (You will probably want to move that image into
 an appropriate layer.)
 
-#### Regenerating the Image
+#### Regenerating the Insets
 
 The layers that were visible when the image was generated, and the
 object which defined the boundary of the image are recorded in custom
 attributes on the `<svg:image>` element.  This makes it easy to
-regenerate the image, should that become necessary (e.g. after you've
-made changes to the drawing.)
+regenerate the image(s), should that become necessary (e.g. after
+you've made changes to the drawing.)
 
-Simply select just the generated image, and fire off the extension.
-It will adjust layer visibility to match what it was when the image
-was first exported, and re-export it.
+Simply select just the generated images you'd like regenerated, and
+fire off the extension.  It will adjust layer visibility to match what
+it was when each image was first exported, and re-export it.
 
 
 ### Hide Rats

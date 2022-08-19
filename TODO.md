@@ -8,15 +8,9 @@
 
 ## Create-Inset extension
 
-- [ ] Allow for rebuilding multiple insets in one go. Currently the
-      extension refuses to rebuild more than on inset at a time.
-      There's no good reason why this should be.  One should be able
-      to select several insets and it should rebuild them all.
-
 - [ ] Add a way to rebuild all insets in file.
 
-- [ ] Once there is a way to rebuild multiple insets in one go,
-      rebuild insets in parallel, in multiple inkscape subprocesses.
+- [ ] Rebuild multiple insets in parallel, in multiple inkscape subprocesses.
 
 ## Resurrect the Update-Symbols extension
 
