@@ -60,7 +60,7 @@ class SvgMaker:
     def __init__(self, tmp_path: Path) -> None:
         self.tmp_path = tmp_path
         self.counter = count(1)
-        self.document = etree.parse(Path(__file__).parent.joinpath("drawing.svg"))
+        self.document = inkex.load_svg(Path(__file__).parent.joinpath("drawing.svg"))
         self.svg = self.document.getroot()
         defs = self.svg.find("./svg:defs", NSMAP)
         assert defs is not None
@@ -91,14 +91,15 @@ class SvgMaker:
                 return f"{{{NSMAP[prefix]}}}{localname}"
             return name
 
-        attrib = {
-            **{_qname(key): val for key, val in attrib.items()},
-            "id": f"{m.group(1)}{next(self.counter)}",
-        }
+        attrib = {_qname(key): val for key, val in attrib.items()}
+        attrib.setdefault("id", f"{m.group(1)}{next(self.counter)}")
         return etree.SubElement(parent, _qname(tag), attrib)
 
-    def add_symbol(self) -> etree._Element:
-        return self._add("svg:symbol", parent=self.defs)
+    def add_symbol(self, *, id: str | None = None) -> etree._Element:
+        attrib = {}
+        if id is not None:
+            attrib["id"] = id
+        return self._add("svg:symbol", parent=self.defs, attrib=attrib)
 
     def add_layer(
         self,

@@ -20,7 +20,7 @@ import re
 from argparse import ArgumentParser
 from functools import reduce
 from operator import add
-from typing import cast
+from typing import Iterable
 from typing import Iterator
 from typing import Literal
 from typing import Optional
@@ -95,12 +95,13 @@ def bounding_box(elem: inkex.BaseElement) -> inkex.BoundingBox:
 class RatGuide:
     GuideMode = Literal["exclusion", "notation"]
 
-    def __init__(
-        self, exclusions: Sequence[inkex.BoundingBox], parent_layer: inkex.Layer
-    ):
+    def __init__(self, exclusions: Sequence[inkex.BoundingBox], rat_layer: inkex.Layer):
         self.exclusions = list(exclusions)
+        container = containing_layer(rat_layer)
+        if container is None:
+            container = rat_layer.root
 
-        existing = parent_layer.xpath(
+        existing = container.xpath(
             ".//svg:g[@bh:rat-guide-mode='layer']", namespaces=NSMAP
         )
         if existing:
@@ -110,7 +111,7 @@ class RatGuide:
             layer = inkex.Layer.new(f"[h] {_('Rat Placement Guides')}")
             layer.set_sensitive(False)
             layer.set(BH_RAT_GUIDE_MODE, "layer")
-            parent_layer.append(layer)
+            container.append(layer)
             self.guide_layer = layer
 
         identity = inkex.Transform()
@@ -165,6 +166,19 @@ class RatGuide:
             el.getparent().remove(el)
 
 
+def _move_offset_to_transform(use: inkex.Use) -> None:
+    """Move any offset in use[@x], use[@y] to the use[@transform]"""
+    x = use.get("x", "0")
+    y = use.get("y", "0")
+    if x != "0" or y != "0":
+        use.transform.add_translate(
+            use.to_dimensionless(x),
+            use.to_dimensionless(y),
+        )
+        use.set("x", "0")
+        use.set("y", "0")
+
+
 class RatPlacer:
     def __init__(
         self, boundary: inkex.BoundingBox, exclusions: Sequence[inkex.BoundingBox]
@@ -173,8 +187,11 @@ class RatPlacer:
         self.exclusions = exclusions
 
     def place_rat(self, rat: inkex.Use) -> None:
+        _move_offset_to_transform(rat)
         parent_transform = rat.getparent().composed_transform()
         rat_bbox = rat.bounding_box(parent_transform)
+        if rat_bbox is None:
+            rat_bbox = inkex.BoundingBox((0, 0), (0, 0))
         debug.draw_bbox(rat_bbox, "red")
 
         newpos = self.random_position(rat_bbox)
@@ -253,27 +270,24 @@ def _clone_layer(
     return clone(layer), cloned_selected
 
 
-def _dwim_rat_layer_name(blind_parent: inkex.Layer) -> str:
-    labels = blind_parent.xpath(
-        "./svg:g[@inkscape:groupmode='layer']/@inkscape:label", namespaces=NSMAP
-    )
-    pat = re.compile(r"^(\[o.*?\].*?)\s+(\d+)\s*$")
-    names, indexes = cast(
-        Tuple[Set[str], Set[str]],
-        map(set, zip(*(m.groups() for m in map(pat.match, labels) if m is not None))),
-    )
+def _dwim_rat_layer_name(layer_labels: Iterable[str]) -> str:
+    pat = re.compile(r"^ (\[o.*?\].*?) \s+ (\d+) \s*$", re.X)
+    matches = list(filter(None, map(pat.match, layer_labels)))
+    names = {m.group(1) for m in matches}
+    max_index = max((int(m.group(2)) for m in matches), default=0)
     name = names.pop() if len(names) == 1 else "Blind"
-    index = max(map(int, indexes), default=0) + 1
-    return f"{name} {index}"
+    return f"{name} {max_index + 1}"
 
 
 def clone_rat_layer(
     rat_layer: inkex.Layer, rats: Sequence[inkex.Use]
 ) -> Tuple[inkex.Layer, Set[inkex.BaseElement]]:
     new_layer, new_rats = _clone_layer(rat_layer, rats)
-    parent = rat_layer.getparent()
-    new_layer.set("inkscape:label", _dwim_rat_layer_name(parent))
-    parent.insert(0, new_layer)
+    layer_labels = rat_layer.xpath(
+        "../svg:g[@inkscape:groupmode='layer']/@inkscape:label", namespaces=NSMAP
+    )
+    new_layer.set("inkscape:label", _dwim_rat_layer_name(layer_labels))
+    rat_layer.getparent().insert(0, new_layer)
 
     # lock and hide cloned layer
     rat_layer.style["display"] = "none"
@@ -311,6 +325,10 @@ def _iter_exclusions(
         else:
             assert el.tag == SVG_USE
             local_tfm = _compose(transform, el.composed_transform())
+            local_tfm.add_translate(
+                el.to_dimensionless(el.get("x", "0")),
+                el.to_dimensionless(el.get("y", "0")),
+            )
             href = el.href
             if href is None:
                 inkex.errormsg(f"Invalid href={el.get('xlink:href')!r} in use")
@@ -391,9 +409,7 @@ class HideRats(inkex.EffectExtension):  # type: ignore[misc]
         rats = self.svg.selection
         rat_layer = find_rat_layer(rats)
 
-        guide_layer = RatGuide(
-            find_exclusions(self.svg), parent_layer=containing_layer(rat_layer)
-        )
+        guide_layer = RatGuide(find_exclusions(self.svg), rat_layer)
         if self.options.restart or self.options.newblind:
             guide_layer.reset()
         if self.options.newblind:
