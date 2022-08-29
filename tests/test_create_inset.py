@@ -154,7 +154,7 @@ def test_recreate_inset_image(svg_maker, run_effect, tmp_path):
     output = run_effect("--id", image_id, svg_maker.as_file())
 
     image = output.findone("//svg:image")
-    assert image.eid == image_id
+    assert image.get("id") == image_id
     assert image.width == 50
     assert image.height == 100
     assert image.get(BH_INSET_EXPORT_ID) == export_id

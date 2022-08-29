@@ -166,7 +166,7 @@ def test_RatPlacer_place_rat(svg_maker, monkeypatch):
     monkeypatch.setattr("random.uniform", lambda x0, x1: (x0 + x1) / 2)
     placer = RatPlacer(inkex.BoundingBox((0, 100), (0, 100)), [])
     placer.place_rat(rat)
-    assert rat.transform == inkex.Transform().add_translate(40, 40)
+    assert rat.transform == inkex.Transform("translate(40, 40)")
 
 
 def test_RatPlacer_place_bboxless_rat(svg_maker, monkeypatch):
@@ -175,7 +175,7 @@ def test_RatPlacer_place_bboxless_rat(svg_maker, monkeypatch):
     monkeypatch.setattr("random.uniform", lambda x0, x1: (x0 + x1) / 2)
     placer = RatPlacer(inkex.BoundingBox((0, 100), (0, 100)), [])
     placer.place_rat(rat)
-    assert rat.transform == inkex.Transform().add_translate(50, 50)
+    assert rat.transform == inkex.Transform("translate(50, 50)")
 
 
 def test_RatPlacer_random_position(monkeypatch):

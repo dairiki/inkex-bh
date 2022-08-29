@@ -252,7 +252,7 @@ def create_inset(
 ) -> None:
     """Create a new inset."""
     image = inkex.Image()
-    visible_layer_ids = {layer.eid for layer in get_visible_layers(svg)}
+    visible_layer_ids = {layer.get_id() for layer in get_visible_layers(svg)}
     image.set(BH_INSET_EXPORT_ID, export_id)
     image.set(BH_INSET_VISIBLE_LAYERS, " ".join(visible_layer_ids))
 
@@ -290,7 +290,7 @@ def recreate_inset(
     with temporary_visibility() as set_visibility:
         set_visibility(image, False)  # hide inset image
         for layer in get_layers(svg):
-            set_visibility(layer, layer.eid in visible_layer_ids)
+            set_visibility(layer, layer.get_id() in visible_layer_ids)
         export_image(svg, export_id, image, png_options)
 
     return True
@@ -351,7 +351,7 @@ class CreateInset(inkex.Effect):  # type: ignore[misc]
 
         # Selected element was not an inset image.
         # Create PNG from selected element
-        export_id = svg.selection[0].eid
+        export_id = svg.selection[0].get_id()
         create_inset(svg, export_id, png_options)
         return True
 

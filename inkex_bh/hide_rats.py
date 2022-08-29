@@ -33,6 +33,8 @@ from inkex.localization import inkex_gettext as _
 
 from . import debug
 from . import typing as types
+from ._compat import compose_transforms
+from ._compat import to_dimensionless
 from .constants import BH_RAT_GUIDE_MODE
 from .constants import BH_RAT_PLACEMENT
 from .constants import NSMAP
@@ -50,28 +52,6 @@ def _xp_str(s: str) -> str:
     strs = re.findall("[^\"]+|[^']+", s)
     assert "".join(strs) == s
     return f"concat({','.join(map(_xp_str, strs))})"
-
-
-def _compose(x: types.TransformLike, y: types.TransformLike) -> inkex.Transform:
-    """Compose two inkex.Transforms.
-
-    This version works with Inkscape version 1.2 and above.
-    """
-    return inkex.Transform(x) @ y
-
-
-def _compat_compose(x: types.TransformLike, y: types.TransformLike) -> inkex.Transform:
-    """Compose two inkex.Transforms.
-
-    This version works with Inkscapes before version 1.2 whose Transforms do
-    not support __matmul__.
-    """
-    return inkex.Transform(x) * y
-
-
-if not hasattr(inkex.Transform, "__matmul__"):
-    # Inkscape < 1.2
-    _compose = _compat_compose  # noqa: F811
 
 
 def containing_layer(elem: inkex.BaseElement) -> Optional[inkex.Layer]:
@@ -109,7 +89,7 @@ class RatGuide:
             self._delete_rects("notation")
         else:
             layer = inkex.Layer.new(f"[h] {_('Rat Placement Guides')}")
-            layer.set_sensitive(False)
+            layer.set("sodipodi:insensitive", "true")  # lock layer
             layer.set(BH_RAT_GUIDE_MODE, "layer")
             container.append(layer)
             self.guide_layer = layer
@@ -172,8 +152,8 @@ def _move_offset_to_transform(use: inkex.Use) -> None:
     y = use.get("y", "0")
     if x != "0" or y != "0":
         use.transform.add_translate(
-            use.to_dimensionless(x),
-            use.to_dimensionless(y),
+            to_dimensionless(use, x),
+            to_dimensionless(use, y),
         )
         use.set("x", "0")
         use.set("y", "0")
@@ -291,7 +271,7 @@ def clone_rat_layer(
 
     # lock and hide cloned layer
     rat_layer.style["display"] = "none"
-    rat_layer.set_sensitive(False)
+    rat_layer.set("sodipodi:insensitive", "true")
     return new_layer, new_rats
 
 
@@ -320,14 +300,14 @@ def _iter_exclusions(
     for el in elem.xpath(path, namespaces=NSMAP):
         if el.get(BH_RAT_PLACEMENT) == "exclude":
             yield el.bounding_box(
-                _compose(transform, el.getparent().composed_transform())
+                compose_transforms(transform, el.getparent().composed_transform())
             )
         else:
             assert el.tag == SVG_USE
-            local_tfm = _compose(transform, el.composed_transform())
+            local_tfm = compose_transforms(transform, el.composed_transform())
             local_tfm.add_translate(
-                el.to_dimensionless(el.get("x", "0")),
-                el.to_dimensionless(el.get("y", "0")),
+                to_dimensionless(el, el.get("x", "0")),
+                to_dimensionless(el, el.get("y", "0")),
             )
             href = el.href
             if href is None:

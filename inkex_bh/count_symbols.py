@@ -40,7 +40,7 @@ def _count_symbols1(use: inkex.Use) -> Counter[str]:
         return Counter()
 
     if href.tag == SVG_SYMBOL:
-        symbol = href.get(BH_COUNT_AS, f"#{href.eid}")
+        symbol = href.get(BH_COUNT_AS, f"#{href.get_id()}")
         return Counter((symbol,))
 
     return count_symbols(
