@@ -169,6 +169,22 @@ class SvgMaker:
             },
         )
 
+    def add_text(
+        self,
+        text: str,
+        *,
+        font_size: str = "12px",
+        parent: etree._Element | None = None,
+    ) -> etree._Element:
+        text_elem = self._add("svg:text", parent)
+        return self._add(
+            "svg:tspan",
+            text_elem,
+            attrib={
+                "style": f"font-size: {font_size};",
+            },
+        )
+
     def as_file(self) -> str:
         fn = self.tmp_path / f"svgmaker{next(self.counter)}.svg"
         with fn.open("wb") as fp:

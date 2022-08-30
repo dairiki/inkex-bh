@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 from contextlib import contextmanager
 from contextlib import ExitStack
 from typing import Iterator
@@ -14,6 +15,7 @@ from typing import Sequence
 import inkex
 
 from . import typing as types
+from ._compat import to_dimensionless
 
 
 def inkex_tspan_bounding_box_is_buggy() -> bool:
@@ -36,9 +38,7 @@ def negate_fontsizes(document: types.SvgElementTree) -> Iterator[None]:
     try:
         for elem in document.xpath("//svg:text | //svg:tspan"):
             elem.set("x-save-style", elem.get("style", None))
-            # XXX: should use elem.to_dimensionless?
-            fontsize = elem.uutounit(elem.style.get("font-size"))
-            # fontsize = elem.to_dimensionless(elem.style.get('font-size'))
+            fontsize = to_dimensionless(elem, elem.style.get("font-size"))
             elem.style["font-size"] = -fontsize
             mangled.append(elem)
 
@@ -88,8 +88,8 @@ def mangle_cmd_for_appimage(cmd: Sequence[str]) -> tuple[str, ...]:
     active AppImage (or if there is no currently active AppImage) this
     returns ``cmd`` unmodified.
 
-    Currently, this ld-linux to crowbar the library search path for the
-    command.
+    Currently, this uses ld-linux to crowbar the library search path
+    for the command.
 
     """
     # Without these machinations, inkscape seems to mostly run okay,
@@ -102,6 +102,8 @@ def mangle_cmd_for_appimage(cmd: Sequence[str]) -> tuple[str, ...]:
     # See the /RunApp script in the Inkscape AppImage itself for an example
     # of how it runs inkscape.
     #
+    if sys.platform != "linux":
+        return tuple(cmd)  # AppImage is only supported on Linux
     executable = shutil.which(cmd[0])
     appdir = os.environ.get("APPDIR")
     if "APPIMAGE" not in os.environ or not appdir:
@@ -115,17 +117,19 @@ def mangle_cmd_for_appimage(cmd: Sequence[str]) -> tuple[str, ...]:
     if not os.path.isfile(ld_linux):
         raise RuntimeError("Can not find ld-linux in AppImage")
 
-    libpath = [
-        os.path.join(appdir, "lib", platform),
-        os.path.join(appdir, "usr/lib", platform),
-        os.path.join(appdir, "usr/lib"),
-    ]
+    libpath = os.pathsep.join(
+        [
+            os.path.join(appdir, "lib", platform),
+            os.path.join(appdir, "usr", "lib", platform),
+            os.path.join(appdir, "usr", "lib"),
+        ]
+    )
 
     return (
         ld_linux,
         "--inhibit-cache",
         "--library-path",
-        ":".join(libpath),
+        libpath,
         executable,
         *cmd[1:],
     )
