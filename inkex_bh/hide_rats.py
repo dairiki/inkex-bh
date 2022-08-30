@@ -22,7 +22,6 @@ from functools import reduce
 from operator import add
 from typing import Iterable
 from typing import Iterator
-from typing import Literal
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -34,6 +33,7 @@ from inkex.localization import inkex_gettext as _
 from . import debug
 from . import typing as types
 from ._compat import compose_transforms
+from ._compat import Literal
 from ._compat import to_dimensionless
 from .constants import BH_RAT_GUIDE_MODE
 from .constants import BH_RAT_PLACEMENT

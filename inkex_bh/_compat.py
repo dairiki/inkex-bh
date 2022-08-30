@@ -1,6 +1,15 @@
+import sys
+
 import inkex
 
 from . import typing as types
+
+if sys.version_info < (3, 8):
+    from typing_extensions import Literal
+    from typing_extensions import TypedDict
+else:
+    from typing import Literal
+    from typing import TypedDict
 
 if hasattr(inkex.Transform, "__matmul__"):
 
@@ -48,4 +57,4 @@ else:
         return inkex.units.convert_unit(value, "px")  # type: ignore[no-any-return]
 
 
-__all__ = ["compose_transforms", "to_dimensionless"]
+__all__ = ["compose_transforms", "to_dimensionless", "Literal", "TypedDict"]

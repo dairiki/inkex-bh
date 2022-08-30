@@ -30,13 +30,13 @@ from typing import Callable
 from typing import Iterable
 from typing import Iterator
 from typing import Sequence
-from typing import TypedDict
 
 import inkex
 from inkex.command import INKSCAPE_EXECUTABLE_NAME
 from inkex.localization import inkex_gettext as _
 from lxml import etree
 
+from ._compat import TypedDict
 from .constants import BH_INSET_EXPORT_ID
 from .constants import BH_INSET_VISIBLE_LAYERS
 from .workarounds import mangle_cmd_for_appimage

@@ -22,6 +22,7 @@ dependencies = [
     # FIXME: not installable from PyPI?
     # "inkex",
     "lxml",
+    "typing_extensions; python_version < '3.8'",
 ]
 # [project.urls]
 # Homepage = https://github.com/dairiki/inkex-bh
