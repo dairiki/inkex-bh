@@ -48,6 +48,7 @@ inkex_bh = ["extensions/*.inx", "extensions/*.py"]
 
 
 
+
 ################################################################
 #
 # pytest
@@ -68,6 +69,13 @@ addopts = "--strict-markers"
 paths = [
     "inkex_bh",
     ".tox/py*/*/inkex_bh",
+]
+
+[tool.coverage.run]
+# Generate unique names for .coverage.* file
+parallel = true
+source_pkgs = [
+    "inkex_bh",
 ]
 
 [tool.coverage.report]
