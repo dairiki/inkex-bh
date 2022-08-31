@@ -25,6 +25,8 @@ import subprocess
 import sys
 from argparse import ArgumentParser
 from contextlib import contextmanager
+from functools import reduce
+from operator import or_
 from tempfile import TemporaryDirectory
 from typing import Callable
 from typing import Iterable
@@ -335,7 +337,9 @@ class CreateInset(inkex.Effect):  # type: ignore[misc]
                     _("Recreating selected insets. Ignoring non-insets in selection.")
                 )
             # FIXME: parallel?
-            return any(recreate_inset(svg, image, png_options) for image in insets)
+            return reduce(
+                or_, (recreate_inset(svg, image, png_options) for image in insets)
+            )
 
         if len(svg.selection) == 0:
             inkex.errormsg(_("No objects selected."))
