@@ -24,7 +24,7 @@ class Debug:
 
     def clear(self) -> None:
         for rect in self.svg.xpath("/svg:svg/svg:rect"):
-            rect.getparent().remove(rect)
+            rect.delete()
 
     def draw_bbox(self, bbox: inkex.BoundingBox, color: Color = "red") -> None:
         rect = inkex.Rectangle.new(bbox.left, bbox.top, bbox.width, bbox.height)
