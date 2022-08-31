@@ -22,11 +22,14 @@ from inkex_bh.create_inset import run_command
 
 def get_inkscape_version_tuple():
     # Can set $INKSCAPE_COMMAND to specify a specific executable
-    proc = subprocess.run(
-        [INKSCAPE_EXECUTABLE_NAME, "--version"],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            [INKSCAPE_EXECUTABLE_NAME, "--version"],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return (-1,)
     m = re.match(r"Inkscape (\d+)\.(\d+)\.(\d+) ", proc.stdout)
     if m is None:
         return (-1,)
