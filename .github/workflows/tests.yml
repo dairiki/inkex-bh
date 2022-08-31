@@ -1,0 +1,129 @@
+name: Tests
+
+on:
+  - push
+  - pull_request
+
+env:
+  'default-python-version': '3.10'
+
+jobs:
+  tests:
+    name: ${{ matrix.os }} py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu-latest']
+        python-version: ['3.7', '3.8', '3.9', '3.10']
+        include:
+          - os: 'windows-latest'
+            python-version: '3.10'
+            install-inkscape: true
+          - os: 'macos-latest'
+            python-version: '3.10'
+            install-inkscape: true
+          - os: 'ubuntu-22.04'
+            # Need 22.04 (jammy) to get inkscape >= 1.0
+            python-version: '3.10'
+            install-inkscape: true
+        exclude:
+          - os: 'ubuntu-latest'
+            python-version: '3.10'
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        lfs: true
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install PyGObject deps (apt)
+      if: runner.os == 'Linux'
+      run: sudo apt install -y
+        libgirepository1.0-dev
+        gcc
+        libcairo2-dev
+        pkg-config
+        python3-dev
+        gir1.2-gtk-3.0
+
+    - name: Install PyGObject deps (homebrew)
+      if: runner.os == 'macOS'
+      run: brew install gobject-introspection
+
+    - name: Install inkscape (apt)
+      if: runner.os == 'Linux' && matrix.install-inkscape
+      run: sudo apt install -y inkscape optipng
+
+    - name: Install inkscape (chocolatey)
+      if: runner.os == 'Windows' && matrix.install-inkscape
+      run: choco install --no-progress --timeout 600 inkscape
+      # (skip optipng installation to save CPU)
+
+    - name: Install inkscape (homebrew)
+      if: runner.os == 'macOS' && matrix.install-inkscape
+      # This step seems to fail sporadically
+      continue-on-error: true
+      run: brew install inkscape
+      # (skip optipng installation to save CPU)
+
+    - name: Install tox
+      run: |
+        python -m pip install --upgrade pip
+        pip install tox tox-gh-actions
+
+    - name: Test with tox
+      run: tox
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: coverage-data
+        path: .coverage.*
+
+  coverage:
+    name: Coverage Report
+    needs: tests
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.default-python-version }}
+    - name: Install python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install coverage[toml]
+    - uses: actions/download-artifact@v2
+      with:
+        name: coverage-data
+    - name: Test coverage and generate reports
+      run: |
+        coverage combine
+        coverage html
+        coverage report --fail-under=100 --show-missing
+    - name: Upload HTML coverage report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: htmlcov
+        path: htmlcov
+
+  lint:
+    name: Lint Checks
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.default-python-version }}
+    - name: Install tox
+      run: |
+        python -m pip install --upgrade pip
+        pip install tox
+    - name: Lint
+      run: tox -e lint

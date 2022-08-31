@@ -69,6 +69,10 @@ addopts = "--strict-markers"
 paths = [
     "inkex_bh",
     ".tox/py*/*/inkex_bh",
+    # Attempt to match source files on various GitHub Windows/macOS runners
+    '*:*\inkex-bh\inkex_bh',
+    '*/inkex-bh/inkex_bh',
+    "*/.tox/*/site-packages/inkex_bh",
 ]
 
 [tool.coverage.run]
