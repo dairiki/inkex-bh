@@ -1,5 +1,11 @@
 # Inkscape Extensions for Barn Hunt
 
+[![Tests](https://github.com/barnhunt/inkex-bh/actions/workflows/tests.yml/badge.svg)](https://github.com/barnhunt/inkex-bh/actions/workflows/tests.yml)
+[![PyPI Version](https://img.shields.io/pypi/v/inkex-bh.svg)](https://pypi.org/project/inkex-bh/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/inkex-bh.svg)](https://pypi.org/project/inkex-bh/)
+[![Inkscape Versions](https://img.shields.io/badge/Inkscape-1.0%E2%80%931.2-blue.svg?logo=inkscape)](https://inkscape.org/)
+[![PyPI Status](https://img.shields.io/pypi/status/inkex-bh.svg)](https://pypi.org/project/inkex-bh/)
+
 Here are some Inkscape extensions that are possibly useful when using
 [Inkscape][] to draw [Barn Hunt][] maps.
 
