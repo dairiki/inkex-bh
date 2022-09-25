@@ -362,9 +362,17 @@ def test_HideRats_newblind(svg_maker, run_effect, capsys):
     svg_maker.add_rectangle(width=20, height=20, parent=tube)
     blind1 = svg_maker.add_layer("[o|blinds] Blind 1", parent=svg_maker.layer1)
     rat1_id = svg_maker.add_use(tube, parent=blind1).get_id()
+    svg_maker.add_text("Test", parent=blind1)
+
     svg = run_effect("--newblind", "true", "--id", rat1_id, svg_maker.as_file())
+
     blinds = svg.xpath(
         "//*[@inkscape:groupmode='layer' and contains(@inkscape:label, 'Blind')]",
         namespaces=NSMAP,
     )
     assert len(blinds) == 2
+
+    # Ensure no text with mangled font size (from
+    # workarounds.text_bbox_hack) were created
+    saved_styles = svg.xpath("//@x-save-style")
+    assert len(saved_styles) == 0

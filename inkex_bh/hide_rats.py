@@ -379,26 +379,27 @@ class HideRats(inkex.EffectExtension):  # type: ignore[misc]
     def effect(self) -> None:
         # with debug.debugger(self.svg):
         #     debug.clear()
-        with text_bbox_hack(self.svg):
-            try:
-                self._effect()
-            except BadRats as exc:
-                inkex.errormsg(exc)
+        try:
+            self._effect()
+        except BadRats as exc:
+            inkex.errormsg(exc)
 
     def _effect(self) -> None:
         rats = self.svg.selection
         rat_layer = find_rat_layer(rats)
 
-        guide_layer = RatGuide(find_exclusions(self.svg), rat_layer)
+        with text_bbox_hack(self.svg):
+            guide_layer = RatGuide(find_exclusions(self.svg), rat_layer)
         if self.options.restart or self.options.newblind:
             guide_layer.reset()
         if self.options.newblind:
             rat_layer, rats = clone_rat_layer(rat_layer, rats)
 
         boundary = get_rat_boundary(self.svg)
-        for rat in rats:
-            hide_rat(rat, boundary, guide_layer.exclusions)
-            guide_layer.add_exclusion(bounding_box(rat))
+        with text_bbox_hack(self.svg):
+            for rat in rats:
+                hide_rat(rat, boundary, guide_layer.exclusions)
+                guide_layer.add_exclusion(bounding_box(rat))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,13 @@
 ## Changes
 
+### 1.0.0rc2 (not yet released)
+
+#### Bugs
+
+##### Hide Rats
+
+- When _Clone rat layer_ selected, cloning of text was screwed up.
+
 ### 1.0.0rc1 (2022-08-31)
 
 This is a fairly complete rewrite and repackaging of a set of Barn
