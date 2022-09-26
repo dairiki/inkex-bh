@@ -1,8 +1,8 @@
 ## Changes
 
-### 1.0.0rc2 (not yet released)
+### 1.0.0rc2 (2022-09-25)
 
-#### Bugs
+#### Bugs Fixed
 
 ##### Hide Rats
 
