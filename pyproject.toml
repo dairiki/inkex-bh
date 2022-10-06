@@ -33,22 +33,25 @@ name = "Jeff Dairiki"
 email = "dairiki@dairiki.org"
 
 [build-system]
-requires = ["setuptools>=61", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.dynamic.readme]
-file = ["README.md", "CHANGES.md"]
-content-type = "text/markdown"
-
-[tool.setuptools.packages.find]
-include = ["inkex_bh"]
-
-[tool.setuptools.package-data]
-inkex_bh = ["extensions/*.inx", "extensions/*.py"]
-
-[tool.setuptools_scm]
-
-
+[tool.hatch.metadata.hooks.custom]
+# Custom hook to form readme from README.md and CHANGES.md in hatch_build.py
+[tool.hatch.version]
+source = "vcs"
+[tool.hatch.build]
+include = [
+    "/inkex_bh",
+]
+[tool.hatch.build.targets.sdist]
+include = [
+    "/inkex_bh",
+    "/tests",
+    "/CHANGES.md",
+    "/README.md",
+    "/tox.ini",
+]
 
 
 ################################################################
