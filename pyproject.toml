@@ -33,7 +33,11 @@ name = "Jeff Dairiki"
 email = "dairiki@dairiki.org"
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = [
+    "hatchling",
+    "hatch-vcs",
+    "hatch-zipped-directory",
+]
 build-backend = "hatchling.build"
 
 [tool.hatch.metadata.hooks.custom]
@@ -52,6 +56,15 @@ include = [
     "/README.md",
     "/tox.ini",
 ]
+[tool.hatch.build.targets.zipped-directory]
+install-name = "org.dairiki.inkex_bh"
+include = [
+    "/inkex_bh",
+    "/CHANGES.md",
+    "/README.md",
+]
+sources = ["inkex_bh"]
+
 
 [tool.hatch.envs.default]
 # General test/dev environment
