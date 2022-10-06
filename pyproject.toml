@@ -53,6 +53,23 @@ include = [
     "/tox.ini",
 ]
 
+[tool.hatch.envs.default]
+# General test/dev environment
+dependencies = [
+    "inkex @ git+https://gitlab.com/inkscape/extensions.git@EXTENSIONS_AT_INKSCAPE_1.2.1",
+    "importlib_resources; python_version < '3.9'",
+    "pytest",
+    "coverage[toml]",
+
+    # Convenience/dev
+    "pytest-cov",
+    "flake8",
+    "flake8-bugbear",
+    "mypy",
+    "types-lxml; python_version >= '3.8'",
+    "lxml-stubs; python_version < '3.8'",
+    "hatchling",
+]
 
 ################################################################
 #
