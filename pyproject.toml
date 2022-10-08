@@ -69,19 +69,29 @@ force-include = {"inkex_bh/extensions" = "."}
 [tool.hatch.envs.default]
 # General test/dev environment
 dependencies = [
-    "inkex @ git+https://gitlab.com/inkscape/extensions.git@EXTENSIONS_AT_INKSCAPE_1.2.1",
+    # Use commit hash rather than tag here so that pip caches built wheel.
+    #
+    # c87ddfd0a130be7a07bb9156f7dfd30740d03913 = refs/tags/EXTENSIONS_AT_INKSCAPE_1.2.1
+    #
+    "inkex @ git+https://gitlab.com/inkscape/extensions.git@c87ddfd0a130be7a07bb9156f7dfd30740d03913",
     "importlib_resources; python_version < '3.9'",
     "pytest",
-    "coverage[toml]",
-
-    # Convenience/dev
     "pytest-cov",
+    "coverage[toml]",
+]
+[tool.hatch.envs.default.scripts]
+cov = "pytest --cov=inkex_bh --cov-report=term-missing {args:tests}"
+no-cov = "pytest --no-cov {args:tests}"
+
+[tool.hatch.envs.dev]
+extra-dependencies = [
+    # Convenience/dev
     "flake8",
     "flake8-bugbear",
+
+    # Running mypy requires python >= 3.8
     "mypy",
-    "typing_extensions; python_version < '3.8'",
-    "types-lxml; python_version >= '3.8'",
-    "lxml-stubs; python_version < '3.8'",
+    "types-lxml",
     "hatchling",
 ]
 
