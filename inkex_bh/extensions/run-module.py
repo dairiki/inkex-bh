@@ -15,30 +15,60 @@ Where <module> is taken from the --module (or -m) command line parameter.
 import argparse
 import runpy
 import sys
+from importlib import import_module
 from importlib.util import module_from_spec
 from importlib.util import spec_from_file_location
 from pathlib import Path
 
 PACKAGE = "inkex_bh"
 
-# Here we explicitly import inkex_bh from our parent directly.  Once
-# it is in sys.modules, its sub-packages should be importable,
-# regarless of whether it's included in sys.path or not.
 
-# Note that Inkscape adds the users extensions directory to sys.path,
-# so if inkex_bh were installed there, these contortions are not
-# strictly necessary.  However, this should work, even if inkex_bh is
-# installed in a sub-directory the extensions directory.  (And it
-# ensures that we get the exact correct version of inkex_bh.)
+def import_module_from_file(module_name: str, path: str) -> None:
+    """Import a module or package from a specific source (``.py``) file
 
-# Copied more-or-less verbatim from:
-# https://docs.python.org/3/library/importlib.html?highlight=import#importing-a-source-file-directly
-spec = spec_from_file_location(PACKAGE, Path(__file__).parent / "../__init__.py")
-if spec is None or spec.loader is None:
-    raise ModuleNotFoundError(f"Can not find {PACKAGE}")
-module = module_from_spec(spec)
-sys.modules[PACKAGE] = module
-spec.loader.exec_module(module)
+    This bypasses the normal search of ``sys.path``, etc., directly
+    importing the module from the specified python source file.
+
+    The imported module is registered, as usual, in ``sys.modules``.
+
+    If the path to the source file is relative, it is interpreted
+    relative to the directory containing this script.
+
+    """
+    # Copied more-or-less verbatim from:
+    # https://docs.python.org/3/library/importlib.html?highlight=import#importing-a-source-file-directly
+    here = Path(__file__).parent
+    spec = spec_from_file_location(module_name, here / path)
+    if spec is None or spec.loader is None:
+        raise ModuleNotFoundError(f"Can not find {module_name}")
+    module = module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+
+
+# Here we explicitly import inkex_bh into sys.modules. Once that's
+# done, its sub-packages should be importable, regardless of whether
+# it's included in sys.path or not, since they will be resolved
+# via index_bh.__path__.
+try:
+    # Attempt normal import (from sys.path).  Python, when running a
+    # script, always prepends the script's directory to sys.path, so
+    # this will find any package installed alongside this script.
+    import_module(PACKAGE)
+except ModuleNotFoundError:
+    # Import from parent directory.  This works when run-module.py is
+    # installed as package data in a subdirectory of the `inkex_bh`
+    # package, e.g.:
+    #
+    # inkex_bh
+    # ├── __init__.py
+    # ├── count_symbols.py
+    # └── extensions
+    #     ├── count-symbols.inx
+    #     └── run-module.py
+    #
+    import_module_from_file(PACKAGE, "../__init__.py")
+
 
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("--module", "-m", required=True)

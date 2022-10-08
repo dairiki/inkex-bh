@@ -113,16 +113,40 @@ seed.
 
 ## Installation
 
-It's a little h<del>o</del><ins>ac</ins>key to use pip in this way,
-but these extensions should be installable using pip.
+To install a released version of this package:
 
-```
-pip install --target "$(inkscape --user-data-directory)/extensions" inkex_bh
+1. Download the packaged zip file _asset_ from the GitHub [Releases
+   page](https://github.com/barnhunt/inkex-bh/releases) for the
+   desired release.  (Those are the zip files named something like
+   `inkex_bh-`_version_`.zip`.)
+
+2. Unzip the zip file into your Inkscape user extensions directory.
+
+   On Linux this can be done thusly:
+   ```bash
+   # remove previous installed version, if any
+   rm -r "$(inkscape --user-data-directory)/extensions/org.dairiki.inkex_bh"
+
+   # unpack desired version of extensions to user's Inkscape extensions directory
+   unzip -d "$(inkscape --user-data-directory)/extensions" inkex_bh-X.Y.Z.zip
+   ```
+
+> **Warning**: It is no longer recommended to install the extensions
+  using `pip`.  (Though, for now, the package will continue to be
+  published to PyPI.)
+
+### Packaging
+
+To build a packaged zip file from the git source, clone the git
+repository, install [hatch], then run
+
+```bash
+hatch build --target zipped-directory
 ```
 
-Alternatively, it should work to simply symlink or copy the `inkex_bh`
-directory from the source distribution (or git repository) to the user
-`extensions` directory.
+That should build a zip archive in the `dist/` subdirectory.
+
+[hatch]: https://hatch.pypa.io/latest/
 
 ----
 

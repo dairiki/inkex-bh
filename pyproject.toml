@@ -44,10 +44,6 @@ build-backend = "hatchling.build"
 # Custom hook to form readme from README.md and CHANGES.md in hatch_build.py
 [tool.hatch.version]
 source = "vcs"
-[tool.hatch.build]
-include = [
-    "/inkex_bh",
-]
 [tool.hatch.build.targets.sdist]
 include = [
     "/inkex_bh",
@@ -56,6 +52,8 @@ include = [
     "/README.md",
     "/tox.ini",
 ]
+[tool.hatch.build.targets.wheel]
+packages = ["inkex_bh"]
 [tool.hatch.build.targets.zipped-directory]
 install-name = "org.dairiki.inkex_bh"
 include = [
@@ -63,7 +61,10 @@ include = [
     "/CHANGES.md",
     "/README.md",
 ]
-sources = ["inkex_bh"]
+exclude = [
+    "/inkex_bh/extensions",
+]
+force-include = {"inkex_bh/extensions" = "."}
 
 
 [tool.hatch.envs.default]

@@ -1,5 +1,17 @@
 ## Changes
 
+### 1.0.0rc3 (unreleased)
+
+#### Packaging
+
+- We now build and publish — as GitHub Release artifacts — zip
+  archives of the extension that suitable for unzipping in a user's
+  Inkscape extensions directory.
+
+- Use [hatch] for packaging.
+
+[hatch]: https://github.com/pypa/hatch
+
 ### 1.0.0rc2 (2022-09-25)
 
 #### Bugs Fixed
