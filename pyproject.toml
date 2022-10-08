@@ -22,7 +22,6 @@ dependencies = [
     # FIXME: not installable from PyPI?
     # "inkex",
     "lxml",
-    "typing_extensions; python_version < '3.8'",
 ]
 
 [project.urls]
@@ -80,6 +79,7 @@ dependencies = [
     "flake8",
     "flake8-bugbear",
     "mypy",
+    "typing_extensions; python_version < '3.8'",
     "types-lxml; python_version >= '3.8'",
     "lxml-stubs; python_version < '3.8'",
     "hatchling",

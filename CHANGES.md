@@ -10,6 +10,8 @@
 
 - Use [hatch] for packaging.
 
+- Remove runtime dependency on `typing_extensions`.
+
 [hatch]: https://github.com/pypa/hatch
 
 ### 1.0.0rc2 (2022-09-25)
