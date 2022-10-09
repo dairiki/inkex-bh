@@ -66,14 +66,13 @@ exclude = [
 force-include = {"inkex_bh/extensions" = "."}
 
 
+[tool.hatch.envs.default.env-vars]
+# Install inkex packages from python registry at https://gitlab.com/dairiki/inkex/
+PIP_EXTRA_INDEX_URL = "https://gitlab.com/api/v4/projects/40060814/packages/pypi/simple"
 [tool.hatch.envs.default]
 # General test/dev environment
 dependencies = [
-    # Use commit hash rather than tag here so that pip caches built wheel.
-    #
-    # c87ddfd0a130be7a07bb9156f7dfd30740d03913 = refs/tags/EXTENSIONS_AT_INKSCAPE_1.2.1
-    #
-    "inkex @ git+https://gitlab.com/inkscape/extensions.git@c87ddfd0a130be7a07bb9156f7dfd30740d03913",
+    "inkex",
     "importlib_resources; python_version < '3.9'",
     "pytest",
     "pytest-cov",

@@ -12,6 +12,13 @@
 
 - Remove runtime dependency on `typing_extensions`.
 
+#### Testing
+
+- Install `inkex` from custom-built wheels in the python registry at
+  https://gitlab.com/dairiki/inkex/.  The versions of `inkex` on PyPI
+  are stale, and also don't match the `inkex` included in any
+  particular version of Inkscape.
+
 [hatch]: https://github.com/pypa/hatch
 
 ### 1.0.0rc2 (2022-09-25)
