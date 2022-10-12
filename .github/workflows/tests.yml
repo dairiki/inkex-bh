@@ -41,20 +41,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install PyGObject deps (apt)
-      if: runner.os == 'Linux'
-      run: sudo apt install -y
-        libgirepository1.0-dev
-        gcc
-        libcairo2-dev
-        pkg-config
-        python3-dev
-        gir1.2-gtk-3.0
-
-    - name: Install PyGObject deps (homebrew)
-      if: runner.os == 'macOS'
-      run: brew install gobject-introspection
-
     - name: Install inkscape (apt)
       if: runner.os == 'Linux' && matrix.install-inkscape
       run: sudo apt install -y inkscape optipng
