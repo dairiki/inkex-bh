@@ -385,7 +385,7 @@ class HideRats(inkex.EffectExtension):  # type: ignore[misc]
             inkex.errormsg(exc)
 
     def _effect(self) -> None:
-        rats = self.svg.selection
+        rats = self.svg.selection.values()
         rat_layer = find_rat_layer(rats)
 
         with text_bbox_hack(self.svg):

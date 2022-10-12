@@ -2,6 +2,11 @@
 
 ### 1.0.0rc3 (unreleased)
 
+#### Bugs
+
+- Fix the _create inset_ and _hide rats_ extensions so that they might
+  actually run under Inkscape 1.0.x.
+
 #### Packaging
 
 - We now build and publish — as GitHub Release artifacts — zip
@@ -18,6 +23,10 @@
   https://gitlab.com/dairiki/inkex/.  The versions of `inkex` on PyPI
   are stale, and also don't match the `inkex` included in any
   particular version of Inkscape.
+
+- We now test (I think) under truly the whole matrix of supported
+  python × Inkscape/inkex versions.
+
 
 [hatch]: https://github.com/pypa/hatch
 

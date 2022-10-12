@@ -330,7 +330,7 @@ class CreateInset(inkex.Effect):  # type: ignore[misc]
             "optipng_level": opt.optipng_level if opt.optipng_level >= 0 else None,
         }
 
-        insets = [elem for elem in svg.selection if is_inset(elem)]
+        insets = [elem for elem in svg.selection.values() if is_inset(elem)]
         if insets:
             if len(svg.selection) != len(insets):
                 inkex.errormsg(
