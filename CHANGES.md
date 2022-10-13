@@ -1,6 +1,6 @@
 ## Changes
 
-### 1.0.0rc3 (unreleased)
+### 1.0.0rc3 (2022-10-12)
 
 #### Bugs
 
