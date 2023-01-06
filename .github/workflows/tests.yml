@@ -80,7 +80,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install coverage[toml]
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: coverage-data
     - name: Test coverage and generate reports
