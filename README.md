@@ -113,7 +113,30 @@ seed.
 
 ## Installation
 
-To install a released version of this package:
+The easiest way to install these extensions is using the new `install`
+sub-command of my [`barnhunt`
+script](https://github.com/barnhunt/barnhunt):
+
+First install [Inkscape](https://inkscape.org),
+[python](https://python.org), and, then,
+my [barnhunt script](https://github.com/barnhunt/barnhunt#installation).
+Finally, run:
+
+```sh
+barnhunt install
+```
+
+to install both these extensions and my [symbol
+sets](https://github.com/barnhunt/bh-symbols) into
+your Inkscape configuration.
+
+### Manual Installation
+
+It is now recommended to use the `barnhunt install` sub-command to
+install these extensions (see above).  However, they may still be
+installed manually.
+
+To manually install a released version of this package:
 
 1. Download the packaged zip file _asset_ from the GitHub [Releases
    page](https://github.com/barnhunt/inkex-bh/releases) for the
