@@ -73,6 +73,10 @@ def _is_subpath(path: str, parent: str) -> bool:
     )
 
 
+# Magic number for ELF executable files
+_ELF_MAGIC = b"\x7fELF"
+
+
 def mangle_cmd_for_appimage(cmd: Sequence[str]) -> tuple[str, ...]:
     """Mangle the command argv when running a command from an AppImage.
 
@@ -110,6 +114,10 @@ def mangle_cmd_for_appimage(cmd: Sequence[str]) -> tuple[str, ...]:
         return tuple(cmd)  # no active AppImage
     if executable is None or not _is_subpath(executable, appdir):
         return tuple(cmd)  # binary not in not in AppImage
+    with open(executable, "rb") as fp:
+        if fp.read(len(_ELF_MAGIC)) != _ELF_MAGIC:
+            # Inkscape==1.2.2 sets INKSCAPE_COMMAND to the AppRun
+            return tuple(cmd)
 
     # XXX: is hard-coded good enough for these??
     platform = "x86_64-linux-gnu"

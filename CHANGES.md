@@ -1,5 +1,12 @@
 ## Changes
 
+### 1.0.0rc4 (unreleased)
+
+#### Bugs
+
+- Fix the _create inset_ extensions when running from the AppImage-packaged version
+  of Inkscape 1.2.2.
+
 ### 1.0.0rc3 (2022-10-12)
 
 #### Bugs

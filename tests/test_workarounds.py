@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 import ntpath
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -57,16 +58,20 @@ def mock_appimage(tmp_path, monkeypatch):
     )
     inkscape = tmp_path / "usr/bin/inkscape"
     inkscape.parent.mkdir(parents=True)
-    inkscape.write_text("#!/usr/bin/env python\n")
-    inkscape.chmod(0o555)
+    shutil.copy(sys.executable, inkscape)  # we just need an ELF executable here
 
     ld_linux = tmp_path / "lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
     ld_linux.parent.mkdir(parents=True)
     ld_linux.touch()
 
+    apprun = tmp_path / "AppRun"
+    apprun.write_text("#!/bin/bash\n")
+    apprun.chmod(0x555)
+
     return {
         "inkscape_path": inkscape,
         "ldlinux_path": ld_linux,
+        "apprun_path": apprun,
     }
 
 
@@ -103,3 +108,8 @@ def test_mangle_cmd_for_appimage_no_mangle_missing_executable(mock_appimage):
 
 def test_mangle_cmd_for_appimage_no_mangle_non_appimage_executable(mock_appimage):
     assert mangle_cmd_for_appimage(["/usr/bin/true", "arg"]) == ("/usr/bin/true", "arg")
+
+
+def test_mangle_cmd_for_appimage_no_mangle_apprun(mock_appimage):
+    inkscape = mock_appimage["apprun_path"]
+    assert mangle_cmd_for_appimage([inkscape, "arg"]) == (inkscape, "arg")
