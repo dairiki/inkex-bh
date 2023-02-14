@@ -1,6 +1,6 @@
 ## Changes
 
-### 1.0.0rc4 (unreleased)
+### 1.0.0rc4 (2023-02-14)
 
 #### Bugs
 
