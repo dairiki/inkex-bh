@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
 import sys
 import types
 from pathlib import Path
@@ -11,7 +10,6 @@ from typing import Callable
 from typing import Iterator
 from typing import TYPE_CHECKING
 from venv import EnvBuilder
-from zipfile import ZipFile
 
 import pytest
 from conftest import SvgMaker
@@ -45,36 +43,17 @@ def package_data_run_module_py() -> Iterator[Path]:
         yield run_module_py
 
 
-@pytest.fixture(scope="session")
-def inkex_zip(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """Build extension zip file."""
-    # Build extension zip file
-    hatch = shutil.which("hatch")
-    if hatch is None:
-        pytest.skip("hatch is not installed")
-    dist = tmp_path_factory.mktemp("dist")
-    run(
-        ("hatch", "build", "--clean", "--target", "zipped-directory", os.fspath(dist)),
-        check=True,
-    )
-    # FIXME: skip test if hatch not installed
-    zips = {p for p in dist.iterdir() if p.suffix == ".zip"}
-    assert len(zips) == 1
-    return zips.pop()
-
-
 @pytest.fixture
-def installed_run_module_py(inkex_zip: StrPath, tmp_path: Path) -> Path:
+def installed_run_module_py(
+    tmp_inkscape_profile: Path, extensions_installed: None
+) -> Path:
     """Construct a dummy Inkscape extensions directory with our extensions installed.
 
     Return path to run-module.py in that directory.
     """
-    # Unpack in fresh "extensions" directory
-    extensions = tmp_path / "extensions"
-    with ZipFile(inkex_zip) as zf:
-        zf.extractall(extensions)
-
-    run_module_py = extensions / "org.dairiki.inkex_bh/run-module.py"
+    run_module_py = tmp_inkscape_profile.joinpath(
+        "extensions/org.dairiki.inkex_bh/run-module.py"
+    )
     assert run_module_py.is_file()
     return run_module_py
 
@@ -108,7 +87,10 @@ class RunModuleTest:
         svg_maker.add_use(sym)
         return svg_maker.as_file()
 
-    def __call__(self, script: StrPath, executable: StrPath | None = None) -> None:
+    def check_output(self, output: str) -> None:
+        assert re.search(r"\s1:\s+#?test1\b", output)
+
+    def run_script(self, script: StrPath, executable: StrPath | None = None) -> str:
         if executable is None:
             executable = sys.executable
 
@@ -118,33 +100,50 @@ class RunModuleTest:
             capture_output=True,
             text=True,
         )
-        assert re.search(r"\s1:\s+#?test1\b", proc.stderr)
+        return proc.stderr
+
+    def __call__(self, script: StrPath, executable: StrPath | None = None) -> None:
+        output = self.run_script(script, executable)
+        self.check_output(output)
 
 
 @pytest.fixture
-def assert_run_module_works(svg_maker: SvgMaker) -> RunModuleTest:
+def run_module_test(svg_maker: SvgMaker) -> RunModuleTest:
     return RunModuleTest(svg_maker)
 
 
 def test_run_module(
-    package_data_run_module_py: Path, assert_run_module_works: RunModuleTest
+    package_data_run_module_py: Path, run_module_test: RunModuleTest
 ) -> None:
-    assert_run_module_works(package_data_run_module_py, sys.executable)
+    run_module_test(package_data_run_module_py, sys.executable)
 
 
 def test_run_module_in_extensions_dir(
     package_data_run_module_py: Path,
     chdir: Callable[[StrPath], None],
-    assert_run_module_works: RunModuleTest,
+    run_module_test: RunModuleTest,
 ) -> None:
     chdir(package_data_run_module_py.parent)
-    assert_run_module_works(package_data_run_module_py.name, sys.executable)
+    run_module_test(package_data_run_module_py.name, sys.executable)
 
 
 def test_run_module_in_installed_extensions(
     venv_python: StrPath,
     installed_run_module_py: StrPath,
-    assert_run_module_works: RunModuleTest,
+    run_module_test: RunModuleTest,
 ) -> None:
     run((venv_python, "-m", "pip", "install", "inkex"), check=True)
-    assert_run_module_works(installed_run_module_py, venv_python)
+    run_module_test(installed_run_module_py, venv_python)
+
+
+def test_run_module_diverts_stderr(
+    installed_run_module_py: StrPath,
+    run_module_test: RunModuleTest,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    log_file = tmp_path / "log.txt"
+    monkeypatch.setenv("INKEX_BH_LOG_FILE", os.fspath(log_file))
+    output = run_module_test.run_script(installed_run_module_py)
+    run_module_test.check_output(log_file.read_text())
+    assert output == ""

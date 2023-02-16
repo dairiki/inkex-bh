@@ -3,14 +3,22 @@ from __future__ import annotations
 import io
 import os
 import re
+import selectors
+import shutil
+import subprocess
+import sys
+import threading
 from itertools import count
 from pathlib import Path
 from typing import Callable
+from typing import Generator
 from typing import Iterator
+from zipfile import ZipFile
 
 import inkex
 import pytest
 from lxml import etree
+from pyvirtualdisplay.display import Display
 
 from inkex_bh.constants import NSMAP
 
@@ -198,3 +206,164 @@ class SvgMaker:
 @pytest.fixture
 def svg_maker(tmp_path: Path) -> SvgMaker:
     return SvgMaker(tmp_path)
+
+
+@pytest.fixture(scope="session")
+def dist_zip(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Build extension distribution zip file."""
+    hatch = shutil.which("hatch")
+    if hatch is None:
+        pytest.skip("hatch is not installed")
+
+    distdir = tmp_path_factory.mktemp("dist")
+    subprocess.run(
+        (hatch, "build", "--clean", "--target=zipped-directory", distdir),
+        check=True,
+    )
+
+    output = list(p for p in distdir.iterdir() if p.suffix == ".zip")
+    assert len(output) == 1
+    return output.pop()
+
+
+@pytest.fixture
+def tmp_inkscape_profile(tmp_path: Path) -> Path:
+    """Install extension in tmp Inkscape profile directory."""
+    profile_dir = tmp_path / "inkscape"
+    os.environ["INKSCAPE_PROFILE_DIR"] = os.fspath(profile_dir)
+    return profile_dir
+
+
+@pytest.fixture
+def extensions_installed(tmp_inkscape_profile: Path, dist_zip: Path) -> None:
+    """Install extension in tmp Inkscape profile directory."""
+    ZipFile(dist_zip).extractall(tmp_inkscape_profile / "extensions")
+
+
+class _CanNotStartService(Exception):
+    """Exception raised when server fails to start."""
+
+
+@pytest.fixture(scope="session")
+def xvfb_display() -> Generator[Display, None, None]:
+    """Start Xvfb virtual display server."""
+    try:
+        display = Display(visible=False, manage_global_env=False)
+    except Exception as exc:
+        raise _CanNotStartService(f"can not start Xvfb: {exc}") from exc
+
+    with display:
+        yield display
+
+
+@pytest.fixture
+def xserver(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure that an X server is available.
+
+    By default, this starts an Xvfb virtual server to avoid flashing of GUI on screen.
+    If Xvfb is unavailable, fall back to using current X server.
+
+    """
+    try:
+        xvfb_display = request.getfixturevalue("xvfb_display")
+    except _CanNotStartService as exc:
+        if not os.environ.get("DISPLAY"):
+            pytest.skip(str(exc))
+        return  # just use system X server (it's likely xvfb is not installed)
+
+    monkeypatch.setenv("DISPLAY", xvfb_display.new_display_var)
+
+
+@pytest.fixture(scope="session")
+def local_session_dbus_daemon(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[str, None, None]:
+    tmp = tmp_path_factory.mktemp("dbus")
+    services_dir = tmp / "services"
+    services_dir.mkdir()
+    config_file = tmp / "dbus_cfg"
+    config_file.write_text(
+        # Copied from python-dbusmock
+        f"""<!DOCTYPE busconfig PUBLIC
+            "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+            "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd"
+        >
+        <busconfig>
+          <type>session</type>
+          <keep_umask/>
+          <listen>unix:tmpdir={tmp}</listen>
+          <!-- Omit standard services -->
+          <servicedir>{services_dir}</servicedir>
+          <policy context="default">
+            <allow send_destination="*" eavesdrop="true"/>
+            <allow eavesdrop="true"/>
+            <allow own="*"/>
+          </policy>
+        </busconfig>
+        """
+    )
+
+    cmd = ("dbus-daemon", "--nofork", f"--config-file={config_file}", "--print-address")
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+    except Exception as exc:
+        pytest.skip(f"can not start dbus-daemon: {exc}")
+
+    assert proc.stdout is not None
+    session_bus_address = next(proc.stdout).strip()
+    try:
+        yield session_bus_address
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+
+@pytest.fixture
+def local_session_dbus(
+    local_session_dbus_daemon: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DBUS_SESSION_BUS_ADDRESS", local_session_dbus_daemon)
+
+
+@pytest.fixture
+def capture_stderr(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Generator[None, None, None]:
+    """Capture stderr output from extensions.
+
+    This fixture is useful when running Inkscape integration tests.  Inkscape
+    normally captures any stderr from the extension itself, displaying it
+    to the user in a GUI dialog.  This does not work well in our headless Xvfb
+    based tests, as no one ever gets to see the dialog, and things just hang.
+
+    """
+    logfile = tmp_path / "log.txt"
+    logfile.touch()
+    monkeypatch.setenv("INKEX_BH_LOG_FILE", os.fspath(logfile))
+
+    running = True
+
+    def echo(s: str) -> None:
+        sys.stderr.write(s)
+        sys.stderr.flush()
+
+    def watcher() -> None:
+        with logfile.open() as fp:
+            # the default EpollSelector doesn't work with regular files
+            sel = selectors.SelectSelector()
+            sel.register(fp, selectors.EVENT_READ)
+            while running:
+                for _ in sel.select(timeout=0.2):
+                    echo(fp.read(1024))
+            echo(fp.read())
+
+    t = threading.Thread(target=watcher)
+    t.start()
+    try:
+        yield
+    finally:
+        running = False
+        t.join()

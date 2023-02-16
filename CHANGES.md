@@ -1,5 +1,12 @@
 ## Changes
 
+### 1.0.0rc5 (unreleased)
+
+#### Testing
+
+- Add integration test for the *create-inset* extension. This checks
+  that the extension can be invoked from Inkscape's batch mode.
+
 ### 1.0.0rc4 (2023-02-14)
 
 #### Bugs
@@ -21,8 +28,6 @@
   Inkscape extensions directory.
 
 - Use [hatch] for packaging.
-
-- Remove runtime dependency on `typing_extensions`.
 
 #### Testing
 

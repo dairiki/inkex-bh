@@ -76,6 +76,7 @@ dependencies = [
     "importlib_resources; python_version < '3.9'",
     "pytest",
     "pytest-cov",
+    "pyvirtualdisplay",
     "coverage[toml]",
 ]
 [tool.hatch.envs.default.scripts]

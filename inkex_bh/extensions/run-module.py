@@ -13,8 +13,10 @@ Where <module> is taken from the --module (or -m) command line parameter.
 
 """
 import argparse
+import os
 import runpy
 import sys
+from contextlib import ExitStack
 from importlib import import_module
 from importlib.util import module_from_spec
 from importlib.util import spec_from_file_location
@@ -74,4 +76,16 @@ parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("--module", "-m", required=True)
 opts, sys.argv[1:] = parser.parse_known_intermixed_args()
 
-runpy.run_module(f"{PACKAGE}.{opts.module}", run_name="__main__")
+with ExitStack() as stack:
+    # Support for diverting stderr to log file (primarily for tests)
+    # Normally, Inkscape captures stderr and presents it in a GUI dialog
+    log_file = os.environ.get("INKEX_BH_LOG_FILE")
+    if log_file:
+        try:
+            fp = open(log_file, "a")
+        except OSError as exc:
+            print(f"{log_file}: {exc}", file=sys.stderr)
+        else:
+            sys.stderr = stack.enter_context(fp)
+
+    runpy.run_module(f"{PACKAGE}.{opts.module}", run_name="__main__")

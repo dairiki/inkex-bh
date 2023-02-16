@@ -20,23 +20,31 @@ from inkex_bh.create_inset import png_dimensions
 from inkex_bh.create_inset import run_command
 
 
-def get_inkscape_version_tuple():
+_inkscape_version = None
+
+
+def inkscape_version():
     # Can set $INKSCAPE_COMMAND to specify a specific executable
-    try:
-        proc = subprocess.run(
-            [INKSCAPE_EXECUTABLE_NAME, "--version"],
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError:
-        return (-1,)
-    m = re.match(r"Inkscape (\d+)\.(\d+)\.(\d+) ", proc.stdout)
-    if m is None:
-        return (-1,)
-    return tuple(map(int, m.groups()))
+    global _inkscape_version
+    if _inkscape_version is None:
+        try:
+            proc = subprocess.run(
+                [INKSCAPE_EXECUTABLE_NAME, "--version"],
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            _inkscape_version = (-1,)
+        else:
+            m = re.search(r"(?m)^Inkscape (\d+)\.(\d+)\.(\d+) ", proc.stdout)
+            assert m is not None
+            _inkscape_version = tuple(map(int, m.groups()))
+    return _inkscape_version
 
 
-inkscape_version = get_inkscape_version_tuple()
+requires_inkscape_10 = pytest.mark.skipif(
+    inkscape_version() < (1, 0), reason="Requires Inkscape >= 1.0"
+)
 
 
 @pytest.fixture
@@ -84,7 +92,7 @@ def test_png_dimensions():
     assert png_dimensions(png_data) == (123, 456)
 
 
-@pytest.mark.skipif(inkscape_version < (1, 0), reason="Requires Inkscape >= 1.0")
+@requires_inkscape_10
 @pytest.mark.parametrize("optipng_level", [None, 2])
 def test_export_png(svg_maker, optipng_level):
     if optipng_level is not None and shutil.which("optipng") is None:
@@ -214,3 +222,35 @@ def test_create_inset_multiple_selections(svg_maker, run_effect, tmp_path, capsy
     output = capsys.readouterr()
     assert "Select exactly one object" in output.err
     assert output.out == ""
+
+
+@requires_inkscape_10
+@pytest.mark.usefixtures(
+    "extensions_installed", "xserver", "local_session_dbus", "capture_stderr"
+)
+@pytest.mark.parametrize("assert_quiet", [None])  # defeat module-wide assert_quiet
+def test_integration(svg_maker, tmp_path, monkeypatch):
+    # set explicit PATH so to avoid issues with extensions be run with the
+    # wrong python interpreter
+    command = shutil.which(INKSCAPE_EXECUTABLE_NAME)
+    monkeypatch.setenv("PATH", "/bin:/usr/bin:/usr/local/bin")
+    monkeypatch.setenv("INKSCAPE_COMMAND", command)
+
+    id1 = svg_maker.add_rectangle(width=200, height=100).attrib["id"]
+    outfile = tmp_path / "output.svg"
+    actions = [
+        f"select-by-id:{id1}",
+        "org.dairiki.bh.create-inset.noprefs",
+    ]
+    cmd = (
+        command,
+        "--batch-process",
+        f"--actions={';'.join(actions)}",
+        f"--export-filename={outfile}",
+        svg_maker.as_file(),
+    )
+    subprocess.run(cmd, check=True, close_fds=False)
+    output = inkex.load_svg(outfile).getroot()
+    image = output.findone("//svg:image")
+    assert image.width == 100
+    assert image.height == 50
