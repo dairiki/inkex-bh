@@ -10,9 +10,8 @@ import sys
 from contextlib import contextmanager
 from contextlib import ExitStack
 from typing import Iterator
-from typing import Sequence
 
-import inkex
+import inkex.command
 
 from . import typing as types
 from ._compat import to_dimensionless
@@ -73,27 +72,12 @@ def _is_subpath(path: str, parent: str) -> bool:
     )
 
 
-# Magic number for ELF executable files
-_ELF_MAGIC = b"\x7fELF"
-
-
-def mangle_cmd_for_appimage(cmd: Sequence[str]) -> tuple[str, ...]:
-    """Mangle the command argv when running a command from an AppImage.
+def monkeypatch_inkscape_command_for_appimage() -> None:
+    """When running from an AppImage, set INKSCAPE_COMMAND to point to the
+    AppRun entry point.
 
     When running binaries from within an AppImage, we need to make sure
     that shared libraries are loaded from the AppImage.
-
-    If the executable named by the first item in ``cmd`` appears to refer
-    to a program from the currently active AppImage (if any), the command
-    will be modified in a way to ensure that the command loads its shared
-    libraries from the AppImage.
-
-    If the named executable resolves to a binary outside of the currently
-    active AppImage (or if there is no currently active AppImage) this
-    returns ``cmd`` unmodified.
-
-    Currently, this uses ld-linux to crowbar the library search path
-    for the command.
 
     """
     # Without these machinations, inkscape seems to mostly run okay,
@@ -107,37 +91,14 @@ def mangle_cmd_for_appimage(cmd: Sequence[str]) -> tuple[str, ...]:
     # of how it runs inkscape.
     #
     if sys.platform != "linux":
-        return tuple(cmd)  # AppImage is only supported on Linux
-    executable = shutil.which(cmd[0])
+        return  # AppImage is only supported on Linux
+    executable = shutil.which(inkex.command.INKSCAPE_EXECUTABLE_NAME)
     appdir = os.environ.get("APPDIR")
     if "APPIMAGE" not in os.environ or not appdir:
-        return tuple(cmd)  # no active AppImage
+        return  # no active AppImage
     if executable is None or not _is_subpath(executable, appdir):
-        return tuple(cmd)  # binary not in not in AppImage
-    with open(executable, "rb") as fp:
-        if fp.read(len(_ELF_MAGIC)) != _ELF_MAGIC:
-            # Inkscape==1.2.2 sets INKSCAPE_COMMAND to the AppRun
-            return tuple(cmd)
+        return  # binary not in not in AppImage
+    apprun = os.path.join(appdir, "AppRun")
 
-    # XXX: is hard-coded good enough for these??
-    platform = "x86_64-linux-gnu"
-    ld_linux = os.path.join(appdir, "lib", platform, "ld-linux-x86-64.so.2")
-    if not os.path.isfile(ld_linux):
-        raise RuntimeError("Can not find ld-linux in AppImage")
-
-    libpath = os.pathsep.join(
-        [
-            os.path.join(appdir, "lib", platform),
-            os.path.join(appdir, "usr", "lib", platform),
-            os.path.join(appdir, "usr", "lib"),
-        ]
-    )
-
-    return (
-        ld_linux,
-        "--inhibit-cache",
-        "--library-path",
-        libpath,
-        executable,
-        *cmd[1:],
-    )
+    inkex.command.INKSCAPE_EXECUTABLE_NAME = apprun
+    os.environ["INKSCAPE_COMMAND"] = apprun

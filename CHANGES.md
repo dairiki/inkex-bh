@@ -2,6 +2,12 @@
 
 ### 1.0.0rc5 (unreleased)
 
+#### Refactor
+
+- Use helpers provided by `inkex.command` (rather than calling
+  `subprocess.run` directly) to run Inkscape (and optipng) from the
+  *create-inset* extension.
+
 #### Testing
 
 - Add integration test for the *create-inset* extension. This checks

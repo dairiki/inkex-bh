@@ -18,11 +18,7 @@
 from __future__ import annotations
 
 import base64
-import os
-import shutil
 import struct
-import subprocess
-import sys
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from functools import reduce
@@ -34,34 +30,15 @@ from typing import Iterator
 from typing import Sequence
 
 import inkex
-from inkex.command import INKSCAPE_EXECUTABLE_NAME
 from inkex.localization import inkex_gettext as _
-from lxml import etree
 
 from ._compat import TypedDict
 from .constants import BH_INSET_EXPORT_ID
 from .constants import BH_INSET_VISIBLE_LAYERS
-from .workarounds import mangle_cmd_for_appimage
+from .workarounds import monkeypatch_inkscape_command_for_appimage
 
 
 DEFAULT_BACKGROUND = inkex.Color("white")
-
-
-class Logger:
-    def __init__(self) -> None:
-        self.verbose = False
-
-    def set_verbosity(self, verbose: bool) -> bool:
-        prev = self.verbose
-        self.verbose = verbose
-        return prev
-
-    def __call__(self, message: str) -> None:
-        if self.verbose:
-            inkex.errormsg(message)
-
-
-log = Logger()
 
 
 def data_url(data: bytes, content_type: str = "application/binary") -> str:
@@ -129,44 +106,6 @@ def temporary_visibility() -> Iterator[SetVisibilityFunction]:
             elem.set("style", style)
 
 
-def run_command(cmd: Sequence[str], missing_ok: bool = False) -> None:
-    """Run an external command.
-
-    This goes to some lengths to be able to successfully run an
-    executable (e.g. inkscape) which is provided by a currently active
-    AppImage.
-
-    verbose — Write command output to stderr, even when command
-    completes successfully.  Normally output is squelched unless the
-    command exits with a non-zero status.
-
-    missing_ok — If executable can not be found, write a warning
-    message, a return without raising an exception.
-
-    """
-    if missing_ok and not shutil.which(cmd[0]):
-        inkex.errormsg(_("WARNING: Can not find executable for {}").format(cmd[0]))
-        return
-
-    cmd = mangle_cmd_for_appimage(cmd)
-
-    try:
-        proc = subprocess.run(
-            cmd,
-            check=True,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-    except subprocess.CalledProcessError as ex:
-        if ex.stdout:
-            inkex.errormsg(ex.stdout)
-        inkex.errormsg(str(ex))
-        sys.exit(1)
-    if proc.stdout:
-        log(proc.stdout)
-
-
 class PngOptions(TypedDict, total=False):
     dpi: float
     scale: float
@@ -201,26 +140,17 @@ def export_png(
     image in Inkscape user units.
     """
     with TemporaryDirectory(prefix="bh-") as tmpdir:
-        input_svg = os.path.join(tmpdir, "input.svg")
-        output_png = os.path.join(tmpdir, "output.png")
-
-        with open(input_svg, "wb") as fp:
-            etree.ElementTree(svg).write(fp)
-        args = [
-            f"--export-filename={output_png}",
-            "--export-type=png",
-            f"--export-id={export_id}",
-            f"--export-dpi={scale * dpi:f}",
-            f"--export-background={background}",
-            f"--export-background-opacity={background_opacity:f}",
-        ]
-        run_command([INKSCAPE_EXECUTABLE_NAME, *args, input_svg])
+        output_png = inkex.command.take_snapshot(
+            svg,
+            tmpdir,
+            dpi=scale * dpi,
+            export_id=str(export_id),
+            export_background=str(background),
+            export_background_opacity=f"{background_opacity:f}",
+        )
 
         if optipng_level is not None and optipng_level >= 0:
-            run_command(
-                ["optipng", "-o", f"{optipng_level:d}", output_png],
-                missing_ok=True,
-            )
+            inkex.command.call("optipng", output_png, o=f"{optipng_level:d}")
 
         with open(output_png, "rb") as fp:
             png_data = fp.read()
@@ -314,13 +244,12 @@ class CreateInset(inkex.Effect):  # type: ignore[misc]
         pars.add_argument("--dpi", type=float, default=144.0)
         pars.add_argument("--background", type=inkex.Color, default=DEFAULT_BACKGROUND)
         pars.add_argument("--optipng-level", type=int, default=2)
-        pars.add_argument("--verbose", type=inkex.Boolean, default=False)
 
     def effect(self) -> bool:
         svg = self.svg
         opt = self.options
 
-        log.set_verbosity(opt.verbose)
+        monkeypatch_inkscape_command_for_appimage()
 
         png_options: PngOptions = {
             "dpi": opt.dpi,

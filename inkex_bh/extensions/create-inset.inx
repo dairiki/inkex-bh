@@ -12,8 +12,6 @@
              gui-text="Background color">0xffffffff</param>
       <param name="optipng-level" type="int" min="-1" max="7"
              gui-text="Optipng optimization level (-1 to disable)">2</param>
-      <param name="verbose" type="boolean"
-             gui-text="Verbose output">false</param>
     </page>
     <page name="Help" gui-text="Help">
       <label appearance="header">

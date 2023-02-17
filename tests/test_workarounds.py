@@ -3,12 +3,12 @@ import ntpath
 import os
 import shutil
 import sys
-from pathlib import Path
 
+import inkex.command
 import pytest
 
 from inkex_bh.workarounds import _is_subpath
-from inkex_bh.workarounds import mangle_cmd_for_appimage
+from inkex_bh.workarounds import monkeypatch_inkscape_command_for_appimage
 from inkex_bh.workarounds import text_bbox_hack
 
 
@@ -44,10 +44,9 @@ def test_is_subpath_different_drive(monkeypatch):
 
 @pytest.fixture
 def mock_appimage(tmp_path, monkeypatch):
-    monkeypatch.setitem(os.environ, "APPIMAGE", "/tmp/appimage")
-    monkeypatch.setitem(os.environ, "APPDIR", os.fspath(tmp_path))
-    monkeypatch.setitem(
-        os.environ,
+    monkeypatch.setenv("APPIMAGE", "/tmp/appimage")
+    monkeypatch.setenv("APPDIR", os.fspath(tmp_path))
+    monkeypatch.setenv(
         "PATH",
         os.pathsep.join(
             [
@@ -60,56 +59,64 @@ def mock_appimage(tmp_path, monkeypatch):
     inkscape.parent.mkdir(parents=True)
     shutil.copy(sys.executable, inkscape)  # we just need an ELF executable here
 
-    ld_linux = tmp_path / "lib/x86_64-linux-gnu/ld-linux-x86-64.so.2"
-    ld_linux.parent.mkdir(parents=True)
-    ld_linux.touch()
-
     apprun = tmp_path / "AppRun"
     apprun.write_text("#!/bin/bash\n")
     apprun.chmod(0x555)
 
     return {
         "inkscape_path": inkscape,
-        "ldlinux_path": ld_linux,
         "apprun_path": apprun,
     }
 
 
-def test_mangle_cmd_for_appimage(mock_appimage):
-    mangled = mangle_cmd_for_appimage(["inkscape", "arg"])
+@pytest.fixture
+def default_inkscape(monkeypatch):
+    monkeypatch.setattr(inkex.command, "INKSCAPE_EXECUTABLE_NAME", "inkscape")
+    monkeypatch.delenv("INKSCAPE_COMMAND", raising=False)
+    return "inkscape"
+
+
+def test_monkeypatch_inkscape_command_for_appimage(mock_appimage, default_inkscape):
+    monkeypatch_inkscape_command_for_appimage()
     if sys.platform == "linux":
-        assert Path(mangled[0]).name.startswith("ld-linux")
-        assert mangled[4:] == (os.fspath(mock_appimage["inkscape_path"]), "arg")
+        apprun = mock_appimage["apprun_path"]
+        assert apprun.samefile(inkex.command.INKSCAPE_EXECUTABLE_NAME)
+        assert apprun.samefile(os.environ["INKSCAPE_COMMAND"])
     else:
-        assert mangled == ("inkscape", "arg")
+        assert inkex.command.INKSCAPE_EXECUTABLE_NAME == default_inkscape
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Only relevant for Linux")
-def test_mangle_cmd_for_appimage_no_ldlinux(mock_appimage):
-    mock_appimage["ldlinux_path"].unlink()
-    with pytest.raises(RuntimeError) as exc_info:
-        mangle_cmd_for_appimage(["inkscape", "arg"])
-    assert exc_info.match("Can not find ld-linux in AppImage")
-
-
-def test_mangle_cmd_for_appimage_no_mangle_unless_linux(mock_appimage, monkeypatch):
+def test_monkeypatch_inkscape_command_for_appimage_no_act_unless_linux(
+    mock_appimage, default_inkscape, monkeypatch
+):
     monkeypatch.setattr("sys.platform", "win32")
-    assert mangle_cmd_for_appimage(["inkscape", "arg"]) == ("inkscape", "arg")
+    monkeypatch_inkscape_command_for_appimage()
+    assert inkex.command.INKSCAPE_EXECUTABLE_NAME == default_inkscape
 
 
-def test_mangle_cmd_for_appimage_no_mangle_unless_appimage(mock_appimage, monkeypatch):
+def test_monkeypatch_inkscape_command_for_appimage_no_act_unless_appimage(
+    mock_appimage, default_inkscape, monkeypatch
+):
     monkeypatch.delitem(os.environ, "APPIMAGE", raising=False)
-    assert mangle_cmd_for_appimage(["inkscape", "arg"]) == ("inkscape", "arg")
+    monkeypatch_inkscape_command_for_appimage()
+    assert inkex.command.INKSCAPE_EXECUTABLE_NAME == default_inkscape
 
 
-def test_mangle_cmd_for_appimage_no_mangle_missing_executable(mock_appimage):
-    assert mangle_cmd_for_appimage(["missing", "arg"]) == ("missing", "arg")
+@pytest.mark.usefixtures("default_inkscape")
+def test_monkeypatch_inkscape_command_for_appimage_missing_executable(
+    mock_appimage, monkeypatch
+):
+    missing = "missing-command-usSf7wCG"
+    monkeypatch.setattr(inkex.command, "INKSCAPE_EXECUTABLE_NAME", missing)
+    monkeypatch_inkscape_command_for_appimage()
+    assert inkex.command.INKSCAPE_EXECUTABLE_NAME == missing
 
 
-def test_mangle_cmd_for_appimage_no_mangle_non_appimage_executable(mock_appimage):
-    assert mangle_cmd_for_appimage(["/usr/bin/true", "arg"]) == ("/usr/bin/true", "arg")
-
-
-def test_mangle_cmd_for_appimage_no_mangle_apprun(mock_appimage):
-    inkscape = mock_appimage["apprun_path"]
-    assert mangle_cmd_for_appimage([inkscape, "arg"]) == (inkscape, "arg")
+@pytest.mark.usefixtures("default_inkscape")
+def test_monkeypatch_inkscape_command_non_appimage_executable(
+    mock_appimage, monkeypatch
+):
+    executable = "/usr/bin/true"
+    monkeypatch.setattr(inkex.command, "INKSCAPE_EXECUTABLE_NAME", executable)
+    monkeypatch_inkscape_command_for_appimage()
+    assert inkex.command.INKSCAPE_EXECUTABLE_NAME == executable

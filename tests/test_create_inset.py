@@ -4,7 +4,6 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import inkex
@@ -15,9 +14,7 @@ from inkex_bh.constants import BH_INSET_EXPORT_ID
 from inkex_bh.constants import BH_INSET_VISIBLE_LAYERS
 from inkex_bh.create_inset import CreateInset
 from inkex_bh.create_inset import export_png
-from inkex_bh.create_inset import log
 from inkex_bh.create_inset import png_dimensions
-from inkex_bh.create_inset import run_command
 
 
 _inkscape_version = None
@@ -75,15 +72,6 @@ def mock_export_png(monkeypatch):
     monkeypatch.setattr("inkex_bh.create_inset.export_png", bogus_export_png)
 
 
-@pytest.fixture
-def verbose_logging():
-    saved = log.set_verbosity(True)
-    try:
-        yield
-    finally:
-        log.set_verbosity(saved)
-
-
 pytestmark = pytest.mark.usefixtures("assert_quiet")
 
 
@@ -105,33 +93,6 @@ def test_export_png(svg_maker, optipng_level):
     )
     assert width == 50
     assert height == 100
-
-
-def test_run_command_eats_stdout(capsys):
-    run_command([sys.executable, "-c", "print('output')"])
-
-
-@pytest.mark.usefixtures("verbose_logging")
-def test_run_command_verbose(capsys):
-    run_command([sys.executable, "-c", "print('output')"])
-    output = capsys.readouterr()
-    assert "output" in output.err
-    assert output.out == ""
-
-
-def test_run_command_missing_ok(capsys):
-    run_command(["this-does-not-exist-f38csed"], missing_ok=True)
-    output = capsys.readouterr()
-    assert "Can not find executable" in output.err
-    assert output.out == ""
-
-
-def test_run_command_failure(capsys):
-    with pytest.raises(SystemExit):
-        run_command([sys.executable, "-c", "import sys; print('failed'); sys.exit(42)"])
-    output = capsys.readouterr()
-    assert "failed" in output.err
-    assert output.out == ""
 
 
 @pytest.mark.usefixtures("mock_export_png")
