@@ -13,6 +13,8 @@
 - Add integration test for the *create-inset* extension. This checks
   that the extension can be invoked from Inkscape's batch mode.
 
+- Omit use of virtual environment in `test_run_module_in_installed_extensions`.
+
 ### 1.0.0rc4 (2023-02-14)
 
 #### Bugs

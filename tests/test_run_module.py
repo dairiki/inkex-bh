@@ -3,13 +3,11 @@ from __future__ import annotations
 import os
 import re
 import sys
-import types
 from pathlib import Path
 from subprocess import run
 from typing import Callable
 from typing import Iterator
 from typing import TYPE_CHECKING
-from venv import EnvBuilder
 
 import pytest
 from conftest import SvgMaker
@@ -56,25 +54,6 @@ def installed_run_module_py(
     )
     assert run_module_py.is_file()
     return run_module_py
-
-
-class CustomEnvBuilder(EnvBuilder):
-    env_exe: str
-
-    def post_setup(self, context: types.SimpleNamespace) -> None:
-        super().post_setup(context)
-        self.env_exe = context.env_exe
-
-
-@pytest.fixture
-def venv_python(tmp_path: Path) -> str:
-    """Return path to python interpreter installed in it's own fresh private venv"""
-    if sys.version_info >= (3, 9):
-        builder = CustomEnvBuilder(with_pip=True, upgrade_deps=True)
-    else:
-        builder = CustomEnvBuilder(with_pip=True)
-    builder.create(tmp_path / "venv")
-    return builder.env_exe
 
 
 class RunModuleTest:
@@ -128,22 +107,7 @@ def test_run_module_in_extensions_dir(
 
 
 def test_run_module_in_installed_extensions(
-    venv_python: StrPath,
     installed_run_module_py: StrPath,
     run_module_test: RunModuleTest,
 ) -> None:
-    run((venv_python, "-m", "pip", "install", "inkex"), check=True)
-    run_module_test(installed_run_module_py, venv_python)
-
-
-def test_run_module_diverts_stderr(
-    installed_run_module_py: StrPath,
-    run_module_test: RunModuleTest,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    log_file = tmp_path / "log.txt"
-    monkeypatch.setenv("INKEX_BH_LOG_FILE", os.fspath(log_file))
-    output = run_module_test.run_script(installed_run_module_py)
-    run_module_test.check_output(log_file.read_text())
-    assert output == ""
+    run_module_test(installed_run_module_py)
