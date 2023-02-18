@@ -1,6 +1,6 @@
 ## Changes
 
-### 1.0.0rc5 (unreleased)
+### 1.0.0rc5 (2023-02-17)
 
 #### Refactor
 
