@@ -115,6 +115,7 @@ addopts = "--strict-markers"
 paths = [
     "inkex_bh",
     ".tox/py*/*/inkex_bh",
+    "*/extensions/org.dairiki.inkex_bh/inkex_bh",
     # Attempt to match source files on various GitHub Windows/macOS runners
     '*:*\inkex-bh\inkex_bh',
     '*/inkex-bh/inkex_bh',
@@ -127,6 +128,10 @@ parallel = true
 source_pkgs = [
     "inkex_bh",
 ]
+omit = [
+    "*/run-module.py",  # not a module, to hard to check coverage
+]
+
 
 [tool.coverage.report]
 exclude_lines = [
