@@ -1,6 +1,6 @@
 ## Changes
 
-### 1.0.0rc6 (unreleased)
+### 1.0.0rc6 (2023-03-06)
 
 - Added new *update-symbols* extension to update the symbol definitions
   in a drawing to those in the installed version of the [bh-symbols] symbol
