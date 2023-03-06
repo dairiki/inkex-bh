@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
+  <name>Update bh-symbols to Currently Installed Version</name>
+  <id>org.dairiki.bh.update-symbols</id>
+  <label appearance="header">
+    Update BH-Symbols to Currently Installed Versions
+  </label>
+  <spacer />
+  <label>
+    This will update any symbols in the current file that have id attributes
+    matching a symbol in the "bh-symbols" symbol set to be replaced
+    by the correponding symbol from the currently installed version of
+    bh-symbols.
+  </label>
+  <spacer />
+  <label>
+    WARNING: This can potentially be a fairly destructive operation.
+    You should probably make a back up copy of your work before running this.
+  </label>
+  <param name="module" type="string" gui-hidden="true">update_symbols</param>
+  <effect needs-live-preview="false">
+    <object-type>all</object-type>
+    <effects-menu>
+      <submenu name="Barn Hunt"/>
+    </effects-menu>
+  </effect>
+  <script>
+    <command location="inx" interpreter="python">run-module.py</command>
+  </script>
+</inkscape-extension>

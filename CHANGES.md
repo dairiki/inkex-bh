@@ -1,5 +1,17 @@
 ## Changes
 
+### 1.0.0rc6 (unreleased)
+
+- Added new *update-symbols* extension to update the symbol definitions
+  in a drawing to those in the installed version of the [bh-symbols] symbol
+  library.
+
+  **NOTE** The *update symbols* operation, if it goes badly, has the
+  capability to significantly mangle the drawing.  Make sure you have
+  a back-up copy of the drawing before running the extension.
+
+[bh-symbols]: https://github.com/barnhunt/bh-symbols
+
 ### 1.0.0rc5 (2023-02-17)
 
 #### Refactor
