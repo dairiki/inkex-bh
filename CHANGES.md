@@ -14,6 +14,8 @@
   the same symbol ids as the standard scale (48:1) sets. As of
   `bh-symbols==1.0.0rc5`, all symbols now have globally unique ids.)
 
+- Do not update unchanged symbols.
+
 ### 1.0.0rc6 (2023-03-06)
 
 - Added new *update-symbols* extension to update the symbol definitions

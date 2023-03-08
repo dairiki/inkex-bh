@@ -21,6 +21,7 @@ import json
 import os
 import re
 from argparse import ArgumentParser
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 from typing import Mapping
@@ -30,16 +31,13 @@ from inkex.command import inkscape
 from inkex.elements import load_svg
 from inkex.localization import inkex_gettext as _
 
+from ._compat import ensure_str
+
 
 def _get_data_path(user: bool = False) -> Path:
     """Get path to Inkscape's system (or user) data directory."""
-    stdout = inkscape(
-        None,
-        system_data_directory=not user,
-        user_data_directory=user,
-    )
-    if isinstance(stdout, bytes):  # inkex 1.0
-        stdout = stdout.decode("utf-8", errors="replace")
+    which = "user" if user else "system"
+    stdout = ensure_str(inkscape(f"--{which}-data-directory"))
     return Path(stdout.strip())
 
 
@@ -143,18 +141,74 @@ def load_symbols(
     return symbols_by_id
 
 
+def _symbols_equal(sym1: inkex.Symbol, sym2: inkex.Symbol) -> bool:
+    id1 = sym1.get("id")
+    id2 = sym2.get("id")
+    id_prefix = id1 + ":"
+
+    def normalize_attrib(attrib: Mapping[str, str]) -> Mapping[str, str]:
+        return {k: v for k, v in attrib.items() if k != "id" or v.startswith(id_prefix)}
+
+    def strip_text(text: str | None) -> str:
+        if text is None:
+            return ""
+        return text.strip()
+
+    def ensure_text(text: str | None) -> str:
+        if text is None:
+            return ""
+        return text
+
+    def elements_equal(e1: inkex.BaseElement, e2: inkex.BaseElement) -> bool:
+        if e1.tag != e2.tag:
+            return False
+        if len(e1) != len(e2):
+            return False
+        if strip_text(e1.tail) != strip_text(e2.tail):
+            return False
+        normalize_text = strip_text
+        if len(e1) == 0 and strip_text(e1.text) != "":
+            # text node with non-ws content, compare verbatim
+            normalize_text = ensure_text
+        if normalize_text(e1.text) != normalize_text(e2.text):
+            return False
+        if normalize_attrib(e1.attrib) != normalize_attrib(e2.attrib):
+            return False
+        if not all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2)):
+            return False
+        return True
+
+    if id1 != id2:
+        return False
+    return elements_equal(sym1, sym2)
+
+
+@dataclass
+class UpdateStats:
+    total: int = 0
+    known: int = 0
+    updated: int = 0
+
+
 def update_symbols(
     svg: inkex.SvgDocumentElement, symbols: Mapping[str, inkex.Symbol]
-) -> None:
+) -> UpdateStats:
+    stats = UpdateStats()
     defs = svg.findone("svg:defs")
     for sym in defs.findall("./svg:symbol[@id]"):
         assert isinstance(sym, inkex.Symbol)
+        stats.total += 1
+        id_ = sym.get("id")
         try:
-            replacement = symbols[sym.get("id")]
+            replacement = symbols[id_]
         except KeyError:
             continue
-        inkex.errormsg(f"Updating #{sym.get('id')}")
-        sym.replace_with(replacement)
+        stats.known += 1
+        if not _symbols_equal(sym, replacement):
+            sym.replace_with(replacement)
+            inkex.errormsg(f"Symbol #{id_} updated")
+            stats.updated += 1
+    return stats
 
 
 class UpdateSymbols(inkex.EffectExtension):  # type: ignore[misc]
@@ -164,10 +218,16 @@ class UpdateSymbols(inkex.EffectExtension):  # type: ignore[misc]
     def effect(self) -> bool:
         try:
             symbols = load_symbols()
-            update_symbols(self.svg, symbols)
+            stats = update_symbols(self.svg, symbols)
         except Exception as exc:
             inkex.errormsg(exc)
             return False
+        if stats.updated == 0:
+            inkex.errormsg(f"Of {stats.total} known symbols none were out-of-date")
+            return False
+        inkex.errormsg(
+            f"UPDATED {stats.updated} out-of-date of {stats.total} known symbols"
+        )
         return True
 
 

@@ -16,8 +16,10 @@ from inkex_bh.update_symbols import _get_symbol_path
 from inkex_bh.update_symbols import _has_unscoped_ids
 from inkex_bh.update_symbols import _load_symbols_from_svg
 from inkex_bh.update_symbols import _symbol_scale
+from inkex_bh.update_symbols import _symbols_equal
 from inkex_bh.update_symbols import load_symbols
 from inkex_bh.update_symbols import update_symbols
+from inkex_bh.update_symbols import UpdateStats
 from inkex_bh.update_symbols import UpdateSymbols
 
 
@@ -250,12 +252,65 @@ def test_load_symbols_raises_runtime_error() -> None:
     assert "can not find" in str(exc_info.value)
 
 
+def _symx(body: str) -> str:
+    return f'<symbol id="x">{body}</symbol>'
+
+
+@pytest.mark.parametrize(
+    "sym1, sym2",
+    [
+        ('<symbol id="sym1"/>', '<symbol id="sym1"/>'),
+        (_symx("<g/>"), _symx("<g/>")),
+        (_symx('<g id="g1"/>'), _symx("<g/>")),
+        (_symx('<g id="g1"/>'), _symx('<g id="g2"/>')),
+        (_symx('<g id="x:g"/>'), _symx('<g id="x:g"/>')),
+        (
+            _symx('<a xmlns="http://example.org/"/>'),
+            _symx('<a xmlns="http://example.org/"/>'),
+        ),
+        (_symx("text<g/>tail"), _symx(" text <g/> tail ")),
+        (_symx("<t>text</t>"), _symx("<t>text</t>")),
+    ],
+)
+def test_symbols_equal(sym1: str, sym2: str) -> None:
+    svg1 = load_symbol(sym1)
+    svg2 = load_symbol(sym2)
+    assert _symbols_equal(svg1, svg2) is True
+    assert _symbols_equal(svg2, svg1) is True
+
+
+@pytest.mark.parametrize(
+    "sym1, sym2",
+    [
+        ('<symbol id="sym1"/>', '<symbol id="sym2"/>'),
+        (_symx('<g id="x:g1"/>'), _symx('<g id="x:g2"/>')),
+        (_symx("<g/>"), _symx("<path/>")),
+        (_symx("<g/>"), _symx("")),
+        (
+            _symx('<a xmlns="http://example.org/"/>'),
+            _symx('<a xmlns="http://example.net/"/>'),
+        ),
+        (_symx("text<g/>tail"), _symx("<g/>tail")),
+        (_symx("text<g/>tail"), _symx("text<g/>")),
+        (_symx("<t>text</t>"), _symx("<t> text</t>")),
+        (_symx("<t>text</t>"), _symx("<t>text </t>")),
+        (_symx("<t>text</t>"), _symx("<t/>")),
+    ],
+)
+def test_symbols_equal_false(sym1: str, sym2: str) -> None:
+    svg1 = load_symbol(sym1)
+    svg2 = load_symbol(sym2)
+    assert _symbols_equal(svg1, svg2) is False
+    assert _symbols_equal(svg2, svg1) is False
+
+
 def test_update_symbols(capsys: pytest.CaptureFixture[str]) -> None:
     svg = inkex.load_svg(
         svg_tmpl('<symbol id="sym1"><g id="sym1:old"></g></symbol>')
     ).getroot()
     symbols = {"sym1": load_symbol('<symbol id="sym1"><g id="sym1:new"></g></symbol>')}
-    update_symbols(svg, symbols)
+    stats = update_symbols(svg, symbols)
+    assert stats == UpdateStats(total=1, known=1, updated=1)
     assert svg.find(".//*[@id='sym1:new']") is not None
     assert svg.find(".//*[@id='sym1:old']") is None
     captured = capsys.readouterr()
@@ -268,8 +323,19 @@ def test_update_symbols_ignores_unknown() -> None:
         svg_tmpl('<symbol id="sym1"><g id="sym1:old"></g></symbol>')
     ).getroot()
     symbols: dict[str, inkex.Symbol] = {}
-    update_symbols(svg, symbols)
+    stats = update_symbols(svg, symbols)
+    assert stats == UpdateStats(total=1)
     assert svg.find(".//*[@id='sym1:old']") is not None
+
+
+def test_update_symbols_skips_uptodate_symbols() -> None:
+    svg = inkex.load_svg(
+        svg_tmpl('<symbol id="sym1"><g id="cruft"/></symbol>')
+    ).getroot()
+    symbols = {"sym1": load_symbol('<symbol id="sym1"><g/></symbol>')}
+    stats = update_symbols(svg, symbols)
+    assert stats == UpdateStats(total=1, known=1)
+    assert svg.find(".//*[@id='cruft']") is not None
 
 
 def test_effect(
@@ -282,6 +348,17 @@ def test_effect(
     out = run_effect(os.fspath(drawing_svg))
     assert out is not None
     assert out.find(".//*[@id='sym1:new']") is not None
+
+
+def test_effect_uptodate(
+    run_effect: Callable[..., inkex.SvgDocumentElement | None],
+    write_svg: WriteSvg,
+    write_symbol_svg: WriteSvg,
+) -> None:
+    drawing_svg = write_svg('<symbol id="sym1"><g id="cruft"/></symbol>')
+    write_symbol_svg('<symbol id="sym1"><g/></symbol>')
+    out = run_effect(os.fspath(drawing_svg))
+    assert out is None
 
 
 def test_effect_error(

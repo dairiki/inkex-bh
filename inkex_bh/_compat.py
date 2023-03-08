@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from typing import Any
 from typing import TYPE_CHECKING
@@ -5,6 +7,14 @@ from typing import TYPE_CHECKING
 import inkex
 
 from . import typing as types
+
+__all__ = [
+    "compose_transforms",
+    "ensure_str",
+    "to_dimensionless",
+    "Literal",
+    "TypedDict",
+]
 
 if sys.version_info >= (3, 8):
     from typing import Literal
@@ -15,7 +25,7 @@ elif TYPE_CHECKING:
 else:
 
     class LiteralType:
-        def __getitem__(self, _key: Any) -> "LiteralType":
+        def __getitem__(self, _key: Any) -> LiteralType:
             return self
 
     Literal = LiteralType()
@@ -23,6 +33,13 @@ else:
     class TypedDict:
         def __init_subclass__(cls, total: bool = True, **kwargs: Any) -> None:
             super().__init_subclass__(**kwargs)
+
+
+def ensure_str(s: bytes | str, encoding: str = "utf-8", errors: str = "strict") -> str:
+    """Coerce bytes to str."""
+    if isinstance(s, bytes):
+        return s.decode(encoding, errors=errors)
+    return s
 
 
 if hasattr(inkex.Transform, "__matmul__"):
@@ -69,6 +86,3 @@ else:
         This version works with Inkscape versions below 1.2.
         """
         return inkex.units.convert_unit(value, "px")  # type: ignore[no-any-return]
-
-
-__all__ = ["compose_transforms", "to_dimensionless", "Literal", "TypedDict"]
