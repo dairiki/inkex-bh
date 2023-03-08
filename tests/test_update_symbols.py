@@ -11,8 +11,8 @@ import inkex
 import pytest
 
 import inkex_bh.update_symbols
+from inkex_bh.update_symbols import _find_symbol_distribution
 from inkex_bh.update_symbols import _get_data_path
-from inkex_bh.update_symbols import _get_symbol_path
 from inkex_bh.update_symbols import _has_unscoped_ids
 from inkex_bh.update_symbols import _load_symbols_from_svg
 from inkex_bh.update_symbols import _symbol_scale
@@ -116,26 +116,29 @@ def test_get_data_path(for_user: bool) -> None:
     assert data_path.is_dir()
 
 
-def test_get_symbol_path(tmp_path: Path) -> None:
+def test_find_symbol_distribution(tmp_path: Path) -> None:
     metadata = tmp_path / "symbols/subdir/METADATA.json"
     metadata.parent.mkdir(parents=True)
     metadata.write_text(json.dumps({"name": "test-name"}))
-    assert _get_symbol_path([tmp_path], "test-name") == metadata.parent
+    dist = _find_symbol_distribution([tmp_path], "test-name")
+    assert dist.path == metadata.parent
 
 
-def test_get_symbol_path_only_checks_symbols(tmp_path: Path) -> None:
+def test_find_symbol_distribution_only_checks_symbols(tmp_path: Path) -> None:
     metadata = tmp_path / "not-symbols/subdir/METADATA.json"
     metadata.parent.mkdir(parents=True)
     metadata.write_text(json.dumps({"name": "test-name"}))
-    assert _get_symbol_path([tmp_path], "test-name") is None
+    with pytest.raises(LookupError):
+        _find_symbol_distribution([tmp_path], "test-name")
 
 
-def test_get_symbol_path_skips_missing_paths(tmp_path: Path) -> None:
+def test_find_symbol_distribution_skips_missing_paths(tmp_path: Path) -> None:
     metadata = tmp_path / "symbols/subdir/METADATA.json"
     metadata.parent.mkdir(parents=True)
     metadata.write_text(json.dumps({"name": "test-name"}))
     missing = tmp_path / "missing"
-    assert _get_symbol_path([missing, tmp_path], "test-name") == metadata.parent
+    dist = _find_symbol_distribution([missing, tmp_path], "test-name")
+    assert dist.path == metadata.parent
 
 
 @pytest.mark.parametrize(
@@ -246,8 +249,8 @@ def test_load_symbols_ignores_syms_w_unscoped_ids(
 
 
 @pytest.mark.usefixtures("dummy_symbol_path")
-def test_load_symbols_raises_runtime_error() -> None:
-    with pytest.raises(RuntimeError) as exc_info:
+def test_load_symbols_missing_symbols() -> None:
+    with pytest.raises(Exception) as exc_info:
         load_symbols(name="unknown-symbol-set-ag8dkf")
     assert "can not find" in str(exc_info.value)
 

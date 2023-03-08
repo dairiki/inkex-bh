@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 from typing import Mapping
+from typing import NamedTuple
 
 import inkex
 from inkex.command import inkscape
@@ -41,8 +42,23 @@ def _get_data_path(user: bool = False) -> Path:
     return Path(stdout.strip())
 
 
-def _get_symbol_path(data_paths: Iterable[Path], name: str) -> Path | None:
-    """Get path to directory containing named symbol set.
+class _SymbolDistribution(NamedTuple):
+    path: Path
+    metadata: dict[str, str | list[str]]
+
+    @property
+    def svg_paths(self) -> tuple[Path, ...]:
+        return tuple(
+            svg_path
+            for svg_path in self.path.iterdir()
+            if svg_path.suffix == ".svg" and svg_path.is_file()
+        )
+
+
+def _find_symbol_distribution(
+    data_paths: Iterable[Path], name: str
+) -> _SymbolDistribution:
+    """Find named symbol distribution.
 
     Name is determined by examing ``METADATA.json`` files found
     under Inkscape's user symbol library directory.
@@ -57,10 +73,10 @@ def _get_symbol_path(data_paths: Iterable[Path], name: str) -> Path | None:
             dirnames[:] = []
 
             with open(path / "METADATA.json", "rb") as fp:
-                meta = json.load(fp)
-            if meta.get("name") == name:
-                return path
-    return None
+                metadata = json.load(fp)
+            if metadata.get("name") == name:
+                return _SymbolDistribution(path, metadata)
+    raise LookupError(f"can not find symbol set with name {name!r}")
 
 
 def _symbol_scale(svg_path: Path) -> str:
@@ -111,15 +127,7 @@ def load_symbols(
         # system and user data paths
         data_paths = [_get_data_path(False), _get_data_path(True)]
 
-    symbol_path = _get_symbol_path(data_paths, name)
-    if symbol_path is None:
-        raise RuntimeError(f"can not find symbol set with name {name!r}")
-
-    svg_paths = (
-        svg_path
-        for svg_path in symbol_path.iterdir()
-        if svg_path.suffix == ".svg" and svg_path.is_file()
-    )
+    symbol_distribution = _find_symbol_distribution(data_paths, name)
 
     def nonstandard_scales_last(svg_path: Path) -> tuple[int, str]:
         # sort 48:1 scale first, then by scale
@@ -128,7 +136,7 @@ def load_symbols(
         return 0 if sort_first else 1, scale
 
     symbols_by_id: dict[str, inkex.Symbol] = {}
-    for svg_path in sorted(svg_paths, key=nonstandard_scales_last):
+    for svg_path in sorted(symbol_distribution.svg_paths, key=nonstandard_scales_last):
         symbols = _load_symbols_from_svg(svg_path)
         if any(id_ in symbols_by_id for id_ in symbols):
             inkex.errormsg(
