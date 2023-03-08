@@ -1,6 +1,6 @@
 ## Changes
 
-### 1.0.0rc7 (unreleased)
+### 1.0.0rc7 (2023-03-08)
 
 #### update-symbols
 
