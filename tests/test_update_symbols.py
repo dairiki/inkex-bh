@@ -240,12 +240,12 @@ def test_load_symbols(write_symbol_svg: WriteSvg) -> None:
 def test_load_symbols_ignores_duplicate_id(
     write_symbol_svg: WriteSvg, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    for filename in ("symbols.svg", "dup.svg"):
+    for filename in ("symbols.svg", "symbols-60to1.svg"):
         write_symbol_svg('<symbol id="sym1"></symbol>', filename=filename)
     symbols = load_symbols()
     assert set(symbols.keys()) == {"sym1"}
     captured = capsys.readouterr()
-    assert "dup.svg contains duplicate" in captured.err
+    assert "symbols-60to1.svg contains duplicate" in captured.err
 
 
 def test_load_symbols_ignores_syms_w_unscoped_ids(
