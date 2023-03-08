@@ -16,6 +16,8 @@
 
 - Do not update unchanged symbols.
 
+- Add `dry-run` option to report which symbols would be updated.
+
 ### 1.0.0rc6 (2023-03-06)
 
 - Added new *update-symbols* extension to update the symbol definitions

@@ -19,6 +19,10 @@
     should probably make a back-up copy of your work before running
     this extension.
   </label>
+  <separator />
+  <param name="dry-run" type="bool"
+         gui-text="Dry Run — just report what would be done"
+         >false</param>
   <param name="module" type="string" gui-hidden="true">update_symbols</param>
   <effect needs-live-preview="false">
     <object-type>all</object-type>

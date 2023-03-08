@@ -338,16 +338,33 @@ def test_update_symbols_skips_uptodate_symbols() -> None:
     assert svg.find(".//*[@id='cruft']") is not None
 
 
+def test_update_symbols_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
+    svg = inkex.load_svg(
+        svg_tmpl('<symbol id="sym1"><g id="sym1:old"></g></symbol>')
+    ).getroot()
+    symbols = {"sym1": load_symbol('<symbol id="sym1"><g id="sym1:new"></g></symbol>')}
+    stats = update_symbols(svg, symbols, dry_run=True)
+    assert stats == UpdateStats(total=1, known=1, updated=1)
+    assert svg.find(".//*[@id='sym1:old']") is not None
+    assert svg.find(".//*[@id='sym1:new']") is None
+    captured = capsys.readouterr()
+    assert re.search(r"(?i)\bupdat(ing|ed)\b", captured.err)
+    assert re.search(r"\bsym1\b", captured.err)
+
+
 def test_effect(
     run_effect: Callable[..., inkex.SvgDocumentElement | None],
     write_svg: WriteSvg,
     write_symbol_svg: WriteSvg,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     drawing_svg = write_svg('<symbol id="sym1"><g id="sym1:old"></g></symbol>')
     write_symbol_svg('<symbol id="sym1"><g id="sym1:new"></g></symbol>')
     out = run_effect(os.fspath(drawing_svg))
     assert out is not None
     assert out.find(".//*[@id='sym1:new']") is not None
+    captured = capsys.readouterr()
+    assert re.search("(?m)^UPDATED.* 1 of 1 ", captured.err)
 
 
 def test_effect_uptodate(
@@ -359,6 +376,20 @@ def test_effect_uptodate(
     write_symbol_svg('<symbol id="sym1"><g/></symbol>')
     out = run_effect(os.fspath(drawing_svg))
     assert out is None
+
+
+def test_effect_dry_run(
+    run_effect: Callable[..., inkex.SvgDocumentElement | None],
+    write_svg: WriteSvg,
+    write_symbol_svg: WriteSvg,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    drawing_svg = write_svg('<symbol id="sym1"><g id="sym1:old"></g></symbol>')
+    write_symbol_svg('<symbol id="sym1"><g id="sym1:new"></g></symbol>')
+    out = run_effect(os.fspath(drawing_svg), "--dry-run=true")
+    assert out is None
+    captured = capsys.readouterr()
+    assert re.search("(?m)^DRY-RUN.* 1 of 1 ", captured.err)
 
 
 def test_effect_error(

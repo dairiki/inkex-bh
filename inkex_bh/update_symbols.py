@@ -191,7 +191,9 @@ class UpdateStats:
 
 
 def update_symbols(
-    svg: inkex.SvgDocumentElement, symbols: Mapping[str, inkex.Symbol]
+    svg: inkex.SvgDocumentElement,
+    symbols: Mapping[str, inkex.Symbol],
+    dry_run: bool = False,
 ) -> UpdateStats:
     stats = UpdateStats()
     defs = svg.findone("svg:defs")
@@ -205,8 +207,11 @@ def update_symbols(
             continue
         stats.known += 1
         if not _symbols_equal(sym, replacement):
-            sym.replace_with(replacement)
-            inkex.errormsg(f"Symbol #{id_} updated")
+            if dry_run:
+                inkex.errormsg(f"Symbol #{id_} would be updated")
+            else:
+                sym.replace_with(replacement)
+                inkex.errormsg(f"Symbol #{id_} updated")
             stats.updated += 1
     return stats
 
@@ -214,21 +219,26 @@ def update_symbols(
 class UpdateSymbols(inkex.EffectExtension):  # type: ignore[misc]
     def add_arguments(self, pars: ArgumentParser) -> None:
         pars.add_argument("--tab")
+        pars.add_argument("--dry-run", type=inkex.Boolean, dest="dry_run")
 
     def effect(self) -> bool:
+        dry_run = self.options.dry_run
         try:
             symbols = load_symbols()
-            stats = update_symbols(self.svg, symbols)
+            stats = update_symbols(self.svg, symbols, dry_run=dry_run)
         except Exception as exc:
             inkex.errormsg(exc)
             return False
+        updated = f"{stats.updated} of {stats.known} known symbols"
         if stats.updated == 0:
-            inkex.errormsg(f"Of {stats.total} known symbols none were out-of-date")
+            inkex.errormsg(f"Of {stats.known} known symbols none were out-of-date")
             return False
-        inkex.errormsg(
-            f"UPDATED {stats.updated} out-of-date of {stats.total} known symbols"
-        )
-        return True
+        elif dry_run:
+            inkex.errormsg(f"DRY-RUN: would have updated {updated}")
+            return False
+        else:
+            inkex.errormsg(f"UPDATED {updated}")
+            return True
 
 
 if __name__ == "__main__":
