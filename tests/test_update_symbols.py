@@ -80,7 +80,17 @@ def write_svg(tmp_path: Path) -> WriteSvg:
 
 
 @pytest.fixture
-def dummy_symbol_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def symbol_metadata() -> dict[str, str]:
+    return {
+        "name": "bh-symbols",
+        "version": "0.0.dev1",
+    }
+
+
+@pytest.fixture
+def dummy_symbol_path(
+    symbol_metadata: dict[str, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Path:
     """Create a dummy symbol-set directory.
 
     _get_data_path will be monkeypatched so that, by default, the code
@@ -92,7 +102,7 @@ def dummy_symbol_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
     metadata_json = tmp_path / "symbols/some-lib/METADATA.json"
     metadata_json.parent.mkdir(parents=True, exist_ok=True)
-    metadata_json.write_text(json.dumps({"name": "bh-symbols"}))
+    metadata_json.write_text(json.dumps(symbol_metadata))
     return metadata_json.parent
 
 
@@ -246,6 +256,18 @@ def test_load_symbols_ignores_syms_w_unscoped_ids(
     assert set(symbols.keys()) == set()
     captured = capsys.readouterr()
     assert "unscoped id" in captured.err
+
+
+def test_load_symbols_reports_symbol_version(
+    symbol_metadata: dict[str, str],
+    write_symbol_svg: WriteSvg,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write_symbol_svg('<symbol id="sym1"></symbol>')
+    load_symbols()
+    captured = capsys.readouterr()
+    version_str = f"{symbol_metadata['name']}=={symbol_metadata['version']}"
+    assert re.search(rf"(?mi)^updating .* {re.escape(version_str)}", captured.err)
 
 
 @pytest.mark.usefixtures("dummy_symbol_path")

@@ -47,6 +47,13 @@ class _SymbolDistribution(NamedTuple):
     metadata: dict[str, str | list[str]]
 
     @property
+    def version(self) -> str | None:
+        version = self.metadata.get("version")
+        if version is not None:
+            assert isinstance(version, str)
+        return version
+
+    @property
     def svg_paths(self) -> tuple[Path, ...]:
         return tuple(
             svg_path
@@ -128,6 +135,9 @@ def load_symbols(
         data_paths = [_get_data_path(False), _get_data_path(True)]
 
     symbol_distribution = _find_symbol_distribution(data_paths, name)
+    inkex.errormsg(
+        _("Updating symbols from {}=={}").format(name, symbol_distribution.version)
+    )
 
     def nonstandard_scales_last(svg_path: Path) -> tuple[int, str]:
         # sort 48:1 scale first, then by scale
