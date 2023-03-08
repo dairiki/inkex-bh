@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Callable
 
@@ -14,8 +13,7 @@ import inkex_bh.update_symbols
 from inkex_bh.update_symbols import _get_data_path
 from inkex_bh.update_symbols import _get_symbol_path
 from inkex_bh.update_symbols import _has_unscoped_ids
-from inkex_bh.update_symbols import _iter_symbol_files
-from inkex_bh.update_symbols import _iter_symbols
+from inkex_bh.update_symbols import _load_symbols_from_svg
 from inkex_bh.update_symbols import _symbol_scale
 from inkex_bh.update_symbols import load_symbols
 from inkex_bh.update_symbols import update_symbols
@@ -105,23 +103,7 @@ def test_get_symbol_scale(filename: str, scale: str) -> None:
     assert _symbol_scale(symbol_path) == scale
 
 
-def test_iter_symbol_files(tmp_path: Path) -> None:
-    for fn in ["symbols.svg", "ignored-scale-60to1.svg", "junk.txt"]:
-        Path(tmp_path, fn).touch()
-    assert set(_iter_symbol_files(tmp_path)) == {tmp_path / "symbols.svg"}
-
-
-def test_iter_symbol_files_ignores_nonstandard_scales(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    for fn in ["symbols.svg", "ignored-scale-60to1.svg", "junk.txt"]:
-        Path(tmp_path, fn).touch()
-    assert set(_iter_symbol_files(tmp_path)) == {tmp_path / "symbols.svg"}
-    output = capsys.readouterr()
-    assert re.search(r"non-standard scale\b.*\b60:1\b", output.err)
-
-
-def test_iter_symbols(tmp_path: Path) -> None:
+def test_load_symbols_from_svg(tmp_path: Path) -> None:
     svg_path = tmp_path / "symbol.svg"
     svg_path.write_text(
         svg_tmpl(
@@ -130,18 +112,22 @@ def test_iter_symbols(tmp_path: Path) -> None:
             '<symbol id="sym2"></symbol>'
         )
     )
-    assert {sym.get("id") for sym in _iter_symbols(svg_path)} == {"sym1", "sym2"}
+    assert set(_load_symbols_from_svg(svg_path)) == {"sym1", "sym2"}
 
 
-def test_iter_symbols_ignore_nested_defs(tmp_path: Path) -> None:
+def test_load_symbols_from_svg_ignores_nested_defs(tmp_path: Path) -> None:
     svg_path = tmp_path / "symbol.svg"
     svg_path.write_text(
-        svg_tmpl('<symbol id="sym1"><defs><symbol id="sym2"></symbol></defs></symbol>')
+        svg_tmpl(
+            '<symbol id="sym1">'
+            '<defs><symbol id="sym1:sym2"></symbol></defs>'
+            "</symbol>"
+        )
     )
-    assert {sym.get("id") for sym in _iter_symbols(svg_path)} == {"sym1"}
+    assert set(_load_symbols_from_svg(svg_path)) == {"sym1"}
 
 
-def test_iter_symbols_ignores_symbols_outside_defs(tmp_path: Path) -> None:
+def test_load_symbols_from_svg_ignores_symbols_outside_defs(tmp_path: Path) -> None:
     svg_path = tmp_path / "symbol.svg"
     svg_path.write_text(
         svg_tmpl(
@@ -149,12 +135,33 @@ def test_iter_symbols_ignores_symbols_outside_defs(tmp_path: Path) -> None:
             body='<symbol id="sym1"></symbol>',
         )
     )
-    assert {sym.get("id") for sym in _iter_symbols(svg_path)} == set()
+    assert len(_load_symbols_from_svg(svg_path)) == 0
+
+
+def test_load_symbols_from_svg_skips_unscoped_ids(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    svg_path = tmp_path / "symbol.svg"
+    svg_path.write_text(svg_tmpl('<symbol id="sym1"><g id="foo"></g></symbol>'))
+    assert len(_load_symbols_from_svg(svg_path)) == 0
+    assert "unscoped id" in capsys.readouterr().err
+
+
+def test_load_symbols_from_svg_skips_duplicate_ids(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    svg_path = tmp_path / "symbol.svg"
+    svg_path.write_text(
+        svg_tmpl('<symbol id="sym1"></symbol>' '<symbol id="sym1"></symbol>')
+    )
+    assert set(_load_symbols_from_svg(svg_path)) == {"sym1"}
+    assert "duplicate id" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(
     "svg",
     [
+        '<symbol id="foo"><g id="bar"></g></symbol>',
         '<symbol id="foo"><g id="other:subid"></g></symbol>',
     ],
 )
@@ -192,7 +199,7 @@ def test_load_symbols_ignores_duplicate_id(
     symbols = load_symbols()
     assert set(symbols.keys()) == {"sym1"}
     output = capsys.readouterr()
-    assert "duplicate id" in output.err
+    assert "dup.svg contains duplicate" in output.err
 
 
 def test_load_symbols_ignores_syms_w_unscoped_ids(

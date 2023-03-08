@@ -1,5 +1,19 @@
 ## Changes
 
+### 1.0.0rc7 (unreleased)
+
+#### update-symbols
+
+- Only skip symbol sets if they contain a symbol id that conflicts
+  with an already scanned symbol set.  Standard-scale (48:1) symbols
+  sets are loaded first, so this results in skipping non-standard
+  symbol sets, but *only* if they contain conflicting symbol ids.
+  Previously, we just ignored all non-standard symbol sets.
+
+  (Until recently, bale sets for non-standard scales (e.g. 60:1) used
+  the same symbol ids as the standard scale (48:1) sets. As of
+  `bh-symbols==1.0.0rc5`, all symbols now have globally unique ids.)
+
 ### 1.0.0rc6 (2023-03-06)
 
 - Added new *update-symbols* extension to update the symbol definitions

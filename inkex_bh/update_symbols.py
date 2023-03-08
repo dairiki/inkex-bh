@@ -21,15 +21,14 @@ import json
 import os
 import re
 from argparse import ArgumentParser
-from itertools import chain
 from pathlib import Path
 from typing import Iterable
-from typing import Iterator
 from typing import Mapping
 
 import inkex
 from inkex.command import inkscape
 from inkex.elements import load_svg
+from inkex.localization import inkex_gettext as _
 
 
 def _get_data_path(user: bool = False) -> Path:
@@ -74,36 +73,36 @@ def _symbol_scale(svg_path: Path) -> str:
     return "48:1"
 
 
-def _iter_symbol_files(symbol_path: Path) -> Iterator[Path]:
-    seen_scales: set[str] = set()
-
-    for svg_path in symbol_path.iterdir():
-        if svg_path.suffix != ".svg" or not svg_path.is_file():
-            continue
-        scale = _symbol_scale(svg_path)
-        if scale != "48:1":
-            # FIXME: giant hack!!!!
-            # Symbols with scales other than 48:1 currently
-            # use duplicate symbol ids.  Ignore them for now.
-            if scale not in seen_scales:
-                inkex.errormsg(f"Ignoring symbols with non-standard scale: {scale}")
-            seen_scales.add(scale)
-            continue
-        yield svg_path
-
-
-def _iter_symbols(svg_path: Path) -> Iterator[inkex.Symbol]:
-    with svg_path.open("rb") as fp:
-        svg = load_svg(fp)
-    yield from svg.getroot().findall("./svg:defs/svg:symbol[@id]")
-
-
 def _has_unscoped_ids(symbol: inkex.Symbol) -> bool:
     """Check that symbol has no unnecessary id attributes set."""
     id_pfx = symbol.get("id") + ":"
     return not all(
         elem.get("id").startswith(id_pfx) for elem in symbol.iterfind(".//*[@id]")
     )
+
+
+def _load_symbols_from_svg(svg_path: Path) -> dict[str, inkex.Symbol]:
+    with svg_path.open("rb") as fp:
+        svg = load_svg(fp)
+
+    symbols: dict[str, inkex.Symbol] = {}
+    for symbol in svg.getroot().findall("./svg:defs/svg:symbol[@id]"):
+        id_ = symbol.get("id")
+        if _has_unscoped_ids(symbol):
+            inkex.errormsg(
+                _("WARNINGS: skipping symbol #{} that contains unscoped id(s)").format(
+                    id_
+                )
+            )
+        elif id_ in symbols:
+            inkex.errormsg(
+                _("WARNING: skipping symbol #{} with duplicate id in {}").format(
+                    id_, svg_path.name
+                )
+            )
+        else:
+            symbols[id_] = symbol
+    return symbols
 
 
 def load_symbols(
@@ -118,18 +117,29 @@ def load_symbols(
     if symbol_path is None:
         raise RuntimeError(f"can not find symbol set with name {name!r}")
 
+    svg_paths = (
+        svg_path
+        for svg_path in symbol_path.iterdir()
+        if svg_path.suffix == ".svg" and svg_path.is_file()
+    )
+
+    def nonstandard_scales_last(svg_path: Path) -> tuple[int, str]:
+        # sort 48:1 scale first, then by scale
+        scale = _symbol_scale(svg_path)
+        sort_first = scale == "48:1"
+        return 0 if sort_first else 1, scale
+
     symbols_by_id: dict[str, inkex.Symbol] = {}
-    for symbol in chain.from_iterable(
-        _iter_symbols(svg_path) for svg_path in _iter_symbol_files(symbol_path)
-    ):
-        id_ = symbol.get("id")
-        if id_ in symbols_by_id:
-            inkex.errormsg(f"Ignoring symbol with duplicate id f{id_!r}")
-            continue
-        if _has_unscoped_ids(symbol):
-            inkex.errormsg(f"Ignoring symbol #{id_} which contains unscoped id(s)")
-            continue
-        symbols_by_id[id_] = symbol
+    for svg_path in sorted(svg_paths, key=nonstandard_scales_last):
+        symbols = _load_symbols_from_svg(svg_path)
+        if any(id_ in symbols_by_id for id_ in symbols):
+            inkex.errormsg(
+                _("WARNING: {} contains duplicate symbol ids, skipping").format(
+                    svg_path.name
+                )
+            )
+        else:
+            symbols_by_id.update(symbols)
     return symbols_by_id
 
 
