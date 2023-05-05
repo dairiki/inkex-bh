@@ -5,6 +5,7 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/inkex-bh.svg)](https://pypi.org/project/inkex-bh/)
 [![Inkscape Versions](https://img.shields.io/badge/Inkscape-1.0%E2%80%931.2-blue.svg?logo=inkscape)](https://inkscape.org/)
 [![PyPI Status](https://img.shields.io/pypi/status/inkex-bh.svg)](https://pypi.org/project/inkex-bh/)
+[![Trackgit Views](https://us-central1-trackgit-analytics.cloudfunctions.net/token/ping/lhaq7ky5ax237etf70pl)](https://trackgit.com)
 
 Here are some Inkscape extensions that are possibly useful when using
 [Inkscape][] to draw [Barn Hunt][] maps.
