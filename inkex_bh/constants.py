@@ -1,6 +1,6 @@
 # Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
 import inkex
-from lxml.etree import register_namespace  # type: ignore[attr-defined]
+from lxml.etree import register_namespace
 
 NSMAP = {
     **inkex.NSS,
