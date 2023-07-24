@@ -33,9 +33,9 @@ def inkscape_version():
         except FileNotFoundError:
             _inkscape_version = (-1,)
         else:
-            m = re.search(r"(?m)^Inkscape (\d+)\.(\d+)\.(\d+) ", proc.stdout)
+            m = re.search(r"(?m)^Inkscape (\d+)\.(\d+)(?:\.(\d+))? ", proc.stdout)
             assert m is not None
-            _inkscape_version = tuple(map(int, m.groups()))
+            _inkscape_version = tuple(map(int, m.groups(default=0)))
     return _inkscape_version
 
 
