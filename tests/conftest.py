@@ -65,8 +65,9 @@ def assert_quiet(capsys: pytest.CaptureFixture[str]) -> Iterator[None]:
 
 
 class SvgMaker:
-    def __init__(self, tmp_path: Path) -> None:
+    def __init__(self, tmp_path: Path, namespace_hrefs=True) -> None:
         self.tmp_path = tmp_path
+        self.namespace_hrefs = namespace_hrefs
         self.counter = count(1)
         self.document = inkex.load_svg(Path(__file__).parent.joinpath("drawing.svg"))
         self.svg = self.document.getroot()
@@ -147,11 +148,12 @@ class SvgMaker:
         y: float = 0,
         parent: etree._Element | None = None,
     ) -> etree._Element:
+        href_attr = "xlink:href" if self.namespace_hrefs else "href"
         return self._add(
             "svg:use",
             parent,
             attrib={
-                "xlink:href": "#" + href.attrib["id"],
+                href_attr: "#" + href.attrib["id"],
                 "x": str(x),
                 "y": str(y),
             },
@@ -204,8 +206,13 @@ class SvgMaker:
 
 
 @pytest.fixture
-def svg_maker(tmp_path: Path) -> SvgMaker:
-    return SvgMaker(tmp_path)
+def namespace_hrefs() -> bool:
+    return True
+
+
+@pytest.fixture
+def svg_maker(tmp_path: Path, namespace_hrefs: bool) -> SvgMaker:
+    return SvgMaker(tmp_path, namespace_hrefs)
 
 
 @pytest.fixture(scope="session")

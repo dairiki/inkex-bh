@@ -14,10 +14,23 @@ from inkex_bh.constants import BH_INSET_EXPORT_ID
 from inkex_bh.constants import BH_INSET_VISIBLE_LAYERS
 from inkex_bh.create_inset import CreateInset
 from inkex_bh.create_inset import export_png
+from inkex_bh.create_inset import get_visible_layers
 from inkex_bh.create_inset import png_dimensions
 
 
 _inkscape_version = None
+
+
+@pytest.fixture(
+    params=[
+        pytest.param(True, id="xlink:href"),
+        pytest.param(False, id="href"),
+    ]
+)
+def namespace_hrefs(request: pytest.FixtureRequest) -> bool:
+    # For the tests in this module, test both with and without namespaced hrefs
+    # in <svg:use> elements.
+    return request.param  # type: ignore[no-any-return]
 
 
 def inkscape_version():
@@ -190,6 +203,7 @@ def test_create_inset_multiple_selections(svg_maker, run_effect, tmp_path, capsy
     "extensions_installed", "xserver", "local_session_dbus", "capture_stderr"
 )
 @pytest.mark.parametrize("assert_quiet", [None])  # defeat module-wide assert_quiet
+@pytest.mark.parametrize("namespace_hrefs", [True])  # slow test - just run the one case
 def test_integration(svg_maker, tmp_path, monkeypatch):
     # set explicit PATH so to avoid issues with extensions be run with the
     # wrong python interpreter
@@ -215,3 +229,32 @@ def test_integration(svg_maker, tmp_path, monkeypatch):
     image = output.findone("//svg:image")
     assert image.width == 100
     assert image.height == 50
+
+
+def test_cloned_layer_visible(svg_maker):
+    hidden_layer = svg_maker.add_layer("Hidden", visible=False)
+    clone_target = svg_maker.add_layer("Target", parent=hidden_layer)
+
+    main_layer = svg_maker.layer1
+    svg_maker.add_use(clone_target, parent=main_layer)
+
+    assert set(get_visible_layers(svg_maker.svg)) == {main_layer, clone_target}
+
+
+def test_hidden_cloned_layer_hidden(svg_maker):
+    clone_target = svg_maker.add_layer("Target", visible=False)
+
+    main_layer = svg_maker.layer1
+    svg_maker.add_use(clone_target, parent=main_layer)
+
+    assert set(get_visible_layers(svg_maker.svg)) == {main_layer}
+
+
+def test_cloned_layer_hidden_if_clone_hidden(svg_maker):
+    hidden_layer = svg_maker.add_layer("Hidden", visible=False)
+    clone_target = svg_maker.add_layer("Target", parent=hidden_layer)
+
+    main_layer = svg_maker.layer1
+    svg_maker.add_use(clone_target, parent=main_layer)
+    main_layer.style["display"] = "none"
+    assert set(get_visible_layers(svg_maker.svg)) == set()

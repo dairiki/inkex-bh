@@ -1,5 +1,14 @@
 ## Changes
 
+### 1.0.0 (unreleased)
+
+#### create-inset
+
+- Fix to work when there are visible clones of layers with hidden parents. ([#2])
+
+[#2]: https://github.com/barnhunt/inkex-bh/issues/2
+
+
 ### 1.0.0rc7 (2023-03-08)
 
 #### update-symbols

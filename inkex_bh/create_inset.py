@@ -39,6 +39,7 @@ from .workarounds import monkeypatch_inkscape_command_for_appimage
 
 
 DEFAULT_BACKGROUND = inkex.Color("white")
+XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
 
 
 def data_url(data: bytes, content_type: str = "application/binary") -> str:
@@ -59,10 +60,30 @@ def fmt_f(value: float) -> str:
     return f"{value:f}"
 
 
-def get_layers(svg: inkex.SvgDocumentElement) -> Iterable[inkex.Layer]:
+def get_layers(svg: inkex.SvgDocumentElement) -> Sequence[inkex.Layer]:
     """Get all layers in SVG."""
-    layers: Sequence[inkex.Layer] = svg.xpath("//svg:g[@inkscape:groupmode='layer']")
-    return layers
+    return svg.xpath(  # type: ignore[no-any-return]
+        "//svg:g[@inkscape:groupmode='layer']"
+    )
+
+
+def get_visible_clone_sources(svg: inkex.SvgDocumentElement) -> Iterator[inkex.Element]:
+    """Get all elements that are sources for visible clones."""
+    clone_source_ids: set[str] = set()
+    for elem in svg.xpath(
+        '//svg:use[starts-with(@href, "#") or starts-with(@xlink:href, "#")]'
+    ):
+        if not is_visible(elem):
+            continue
+        href = elem.get("href") or elem.get(XLINK_HREF)
+        assert href.startswith("#")
+        clone_source_ids.add(href[1:])
+
+    for src_id in clone_source_ids:
+        # FIXME: escape src_id for xpath string
+        for src in svg.xpath(f"//svg:g[@inkscape:groupmode='layer'][@id='{src_id}']"):
+            if src.style.get("display") != "none":
+                yield src
 
 
 def is_visible(elem: inkex.BaseElement) -> bool:
@@ -73,10 +94,15 @@ def is_visible(elem: inkex.BaseElement) -> bool:
     return True
 
 
-def get_visible_layers(svg: inkex.SvgDocumentElement) -> Iterator[inkex.Layer]:
-    for layer in get_layers(svg):
-        if is_visible(layer):
-            yield layer
+def get_visible_layers(svg: inkex.SvgDocumentElement) -> Iterable[inkex.Layer]:
+    visible_layers = set(filter(is_visible, get_layers(svg)))
+
+    # Find clones that reference layers.  Ensure those target layers are visible.
+    visible_layers.update(
+        elem for elem in get_visible_clone_sources(svg) if isinstance(elem, inkex.Layer)
+    )
+
+    return visible_layers
 
 
 SetVisibilityFunction = Callable[[inkex.BaseElement, bool], None]
