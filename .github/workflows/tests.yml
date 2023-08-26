@@ -39,7 +39,9 @@ jobs:
 
     - name: Install inkscape (apt)
       if: runner.os == 'Linux' && matrix.install-inkscape
-      run: sudo apt install -y inkscape optipng
+      run: |
+        sudo apt update
+        sudo apt install -y inkscape optipng
 
     - name: Install inkscape (chocolatey)
       if: runner.os == 'Windows' && matrix.install-inkscape
