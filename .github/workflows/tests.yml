@@ -58,7 +58,7 @@ jobs:
       if: runner.os == 'macOS' && matrix.install-inkscape
       # This step seems to fail sporadically
       continue-on-error: true
-      run: brew install inkscape
+      run: brew install homebrew/casks/inkscape
       # (skip optipng installation to save CPU)
 
     - name: Install tox
