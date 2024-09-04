@@ -90,7 +90,7 @@ extra-dependencies = [
     "ruff==0.6.3",
 
     # Running mypy requires python >= 3.8
-    "mypy",
+    "mypy==1.11.2",
     "types-lxml",
     "hatchling",
 ]
