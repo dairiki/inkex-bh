@@ -22,36 +22,12 @@ repos:
     - id: python-check-blanket-type-ignore
     - id: python-use-type-annotations
 
-- repo: https://github.com/asottile/yesqa
-  rev: v1.4.0
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.6.3
   hooks:
-  - id: yesqa
-
-- repo: https://github.com/asottile/pyupgrade
-  rev: 'v2.37.3'
-  hooks:
-    - id: pyupgrade
-      args: ["--py37-plus"]
-
-- repo: https://github.com/asottile/reorder_python_imports
-  rev: v3.8.2
-  hooks:
-    - id: reorder-python-imports
-      args: ["--py37-plus"]
-
-- repo: https://github.com/PyCQA/flake8
-  rev: '5.0.4'
-  hooks:
-    - id: flake8
-      args: ["--append-config", "tox.ini"]
-      language_version: python3
-      additional_dependencies:
-      # NOTE: autoupdate does not pick up flake8-bugbear since it is a
-      # transitive dependency. Make sure to update flake8-bugbear
-      # manually on a regular basis.
-      - flake8-bugbear==22.7.1
-
-- repo: https://github.com/psf/black
-  rev: '22.6.0'
-  hooks:
-    - id: black
+    # Run the linter.
+    - id: ruff
+      args: [--fix]
+    # Run the formatter.
+    - id: ruff-format

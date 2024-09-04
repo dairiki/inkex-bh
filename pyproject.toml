@@ -86,8 +86,7 @@ no-cov = "pytest --no-cov {args:tests}"
 [tool.hatch.envs.dev]
 extra-dependencies = [
     # Convenience/dev
-    "flake8",
-    "flake8-bugbear",
+    "ruff==0.6.3",
 
     # Running mypy requires python >= 3.8
     "mypy",
@@ -198,3 +197,51 @@ module = [
     "tests.*",
 ]
 disallow_untyped_calls = false
+
+################################################################
+[tool.ruff]
+extend-exclude = [".pdm-build"]
+
+[tool.ruff.lint]
+explicit-preview-rules = true
+allowed-confusables = ["’", "–"]
+select = ["ALL"]
+ignore = [
+    "COM812",                   # missing-trailing-comma
+    "SLF001",                   # flake8-self (private-member-access)
+    "ISC001",                   # (conflicts with `ruff format`)
+    "PT004",                    # (pytest-missing-fixture-name-underscore)
+    "SIM102",                   # collapsible-if
+    "SIM108",                   # if-else-block-instead-of-if-exp
+    "SIM117",                   # multiple-with-statements
+
+    "PL",                       # pylint
+    "TCH",                      # flake8-type-checking
+    "EM",                       # flake8-errmsg
+    "TRY",                      # tryceratops (exception handling anti-patterns)
+
+    "D",                        # pydocstyle
+    "N",                        # pep8-naming
+    "ANN",                      # flake8-annotations
+    "S",                        # flake8-bandit
+    "BLE",                      # flake8-blind-except
+    "FBT",                      # flake8-boolean-trap
+    "A",                        # flake8-builtins
+    "DTZ",                      # flake8-datetimez
+    "FIX", "TD",                # flake8-fixme, flake8-todos
+    "G",                        # flake8-logging-format
+    "INP",                      # flake8-no-pep420
+    "T20",                      # flake8-print
+    "TID",                      # flake8-tidy-imports
+    "ARG",                      # flake8-unused-arguments
+    "PTH",                      # flake8-use-pathlib
+    "ERA",                      # eradicate (commented-out-code)
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+order-by-type = false
+known-local-folder = ["barnhunt"]
+
+[tool.ruff.lint.flake8-unused-arguments]
+ignore-variadic-names = true

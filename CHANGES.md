@@ -1,5 +1,11 @@
 ## Changes
 
+### 1.1.0 (unreleased)
+
+#### style
+
+- Use ruff rather than black, flake8, etc. for style linting
+
 ### 1.0.0 (2023-08-26)
 
 #### create-inset
