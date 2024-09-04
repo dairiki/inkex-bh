@@ -2,6 +2,12 @@
 
 ### 1.1.0 (unreleased)
 
+- Drop support for python 3.7.  Since we only support Inkscape>=1.0
+  and inkscape 1.0 shipped with python 3.8 this should not cause
+  issues.
+
+- Test under python 3.12.
+
 #### style
 
 - Use ruff rather than black, flake8, etc. for style linting

@@ -22,8 +22,10 @@ from argparse import ArgumentParser
 from functools import reduce
 from operator import add
 from types import MappingProxyType
+from typing import Final
 from typing import Iterable
 from typing import Iterator
+from typing import Literal
 from typing import Sequence
 
 import inkex
@@ -32,8 +34,6 @@ from inkex.localization import inkex_gettext as _
 from . import debug
 from . import typing as types
 from ._compat import compose_transforms
-from ._compat import Final
-from ._compat import Literal
 from ._compat import to_dimensionless
 from .constants import BH_RAT_GUIDE_MODE
 from .constants import BH_RAT_PLACEMENT

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import sys
-
 import inkex
 
 from . import typing as types
@@ -10,19 +8,7 @@ __all__ = [
     "compose_transforms",
     "ensure_str",
     "to_dimensionless",
-    "Final",
-    "Literal",
-    "TypedDict",
 ]
-
-if sys.version_info >= (3, 8):
-    from typing import Final
-    from typing import Literal
-    from typing import TypedDict
-else:
-    from typing_extensions import Final
-    from typing_extensions import Literal
-    from typing_extensions import TypedDict
 
 
 def ensure_str(s: bytes | str, encoding: str = "utf-8", errors: str = "strict") -> str:

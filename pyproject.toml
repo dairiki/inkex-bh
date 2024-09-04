@@ -3,7 +3,7 @@ name = "inkex-bh"
 description = "Inkscape extensions for Barn Hunt"
 keywords = ["inkscape", "barn hunt", "barnhunt"]
 license = {text = "GNU GPLv3"}
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Plugins",
@@ -21,7 +21,6 @@ dynamic = ["version", "readme"]
 dependencies = [
     # FIXME: not installable from PyPI?
     # "inkex",
-    "typing_extensions; python_version<'3.8'",
     "lxml",
 ]
 
@@ -89,7 +88,7 @@ extra-dependencies = [
     # Convenience/dev
     "ruff==0.6.3",
 
-    # Running mypy requires python >= 3.8
+    # mypy
     "mypy==1.11.2",
     "types-lxml",
     "hatchling",
