@@ -21,6 +21,7 @@ dynamic = ["version", "readme"]
 dependencies = [
     # FIXME: not installable from PyPI?
     # "inkex",
+    "typing_extensions; python_version<'3.8'",
     "lxml",
 ]
 

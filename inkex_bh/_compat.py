@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import sys
-from typing import Any
-from typing import TYPE_CHECKING
 
 import inkex
 
@@ -12,27 +10,19 @@ __all__ = [
     "compose_transforms",
     "ensure_str",
     "to_dimensionless",
+    "Final",
     "Literal",
     "TypedDict",
 ]
 
 if sys.version_info >= (3, 8):
+    from typing import Final
     from typing import Literal
     from typing import TypedDict
-elif TYPE_CHECKING:
+else:
+    from typing_extensions import Final
     from typing_extensions import Literal
     from typing_extensions import TypedDict
-else:
-
-    class LiteralType:
-        def __getitem__(self, _key: Any) -> LiteralType:
-            return self
-
-    Literal = LiteralType()
-
-    class TypedDict:
-        def __init_subclass__(cls, total: bool = True, **kwargs: Any) -> None:
-            super().__init_subclass__(**kwargs)
 
 
 def ensure_str(s: bytes | str, encoding: str = "utf-8", errors: str = "strict") -> str:

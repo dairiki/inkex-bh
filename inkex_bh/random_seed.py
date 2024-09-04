@@ -12,8 +12,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-""" Set/update random seed in /svg/@bh:random-seed
-"""
+"""Set/update random seed in /svg/@bh:random-seed"""
+
 import random
 from argparse import ArgumentParser
 

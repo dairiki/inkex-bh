@@ -152,7 +152,7 @@ def test_find_symbol_distribution_skips_missing_paths(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "filename, scale",
+    ("filename", "scale"),
     [
         ("symbols-12x13x14.svg", "48:1"),
         ("symbols-12x13x14-14to3.svg", "14:3"),
@@ -272,7 +272,7 @@ def test_load_symbols_reports_symbol_version(
 
 @pytest.mark.usefixtures("dummy_symbol_path")
 def test_load_symbols_missing_symbols() -> None:
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(LookupError) as exc_info:
         load_symbols(name="unknown-symbol-set-ag8dkf")
     assert "can not find" in str(exc_info.value)
 
@@ -282,7 +282,7 @@ def _symx(body: str) -> str:
 
 
 @pytest.mark.parametrize(
-    "sym1, sym2",
+    ("sym1", "sym2"),
     [
         ('<symbol id="sym1"/>', '<symbol id="sym1"/>'),
         (_symx("<g/>"), _symx("<g/>")),
@@ -305,7 +305,7 @@ def test_symbols_equal(sym1: str, sym2: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "sym1, sym2",
+    ("sym1", "sym2"),
     [
         ('<symbol id="sym1"/>', '<symbol id="sym2"/>'),
         (_symx('<g id="x:g1"/>'), _symx('<g id="x:g2"/>')),

@@ -19,7 +19,6 @@ from inkex_bh.hide_rats import HideRats
 from inkex_bh.hide_rats import RatGuide
 from inkex_bh.hide_rats import RatPlacer
 
-
 pytestmark = pytest.mark.usefixtures("assert_quiet")
 
 
@@ -196,7 +195,7 @@ def test_RatPlacer_random_position_warns(monkeypatch, capsys):
 
 
 @pytest.mark.parametrize(
-    "labels, expect",
+    ("labels", "expect"),
     [
         ([], "Blind 1"),
         (["[o|blinds] Blind 3", "[o|blinds] Blind 1"], "[o|blinds] Blind 4"),

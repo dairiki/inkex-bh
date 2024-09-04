@@ -83,7 +83,7 @@ def test_monkeypatch_inkscape_command_for_appimage(mock_appimage, default_inksca
         assert apprun.samefile(inkex.command.INKSCAPE_EXECUTABLE_NAME)
         assert apprun.samefile(os.environ["INKSCAPE_COMMAND"])
     else:
-        assert inkex.command.INKSCAPE_EXECUTABLE_NAME == default_inkscape
+        assert default_inkscape == inkex.command.INKSCAPE_EXECUTABLE_NAME
 
 
 def test_monkeypatch_inkscape_command_for_appimage_no_act_unless_linux(
@@ -91,7 +91,7 @@ def test_monkeypatch_inkscape_command_for_appimage_no_act_unless_linux(
 ):
     monkeypatch.setattr("sys.platform", "win32")
     monkeypatch_inkscape_command_for_appimage()
-    assert inkex.command.INKSCAPE_EXECUTABLE_NAME == default_inkscape
+    assert default_inkscape == inkex.command.INKSCAPE_EXECUTABLE_NAME
 
 
 def test_monkeypatch_inkscape_command_for_appimage_no_act_unless_appimage(
@@ -99,7 +99,7 @@ def test_monkeypatch_inkscape_command_for_appimage_no_act_unless_appimage(
 ):
     monkeypatch.delitem(os.environ, "APPIMAGE", raising=False)
     monkeypatch_inkscape_command_for_appimage()
-    assert inkex.command.INKSCAPE_EXECUTABLE_NAME == default_inkscape
+    assert default_inkscape == inkex.command.INKSCAPE_EXECUTABLE_NAME
 
 
 @pytest.mark.usefixtures("default_inkscape")
@@ -109,7 +109,7 @@ def test_monkeypatch_inkscape_command_for_appimage_missing_executable(
     missing = "missing-command-usSf7wCG"
     monkeypatch.setattr(inkex.command, "INKSCAPE_EXECUTABLE_NAME", missing)
     monkeypatch_inkscape_command_for_appimage()
-    assert inkex.command.INKSCAPE_EXECUTABLE_NAME == missing
+    assert missing == inkex.command.INKSCAPE_EXECUTABLE_NAME
 
 
 @pytest.mark.usefixtures("default_inkscape")
@@ -119,4 +119,4 @@ def test_monkeypatch_inkscape_command_non_appimage_executable(
     executable = "/usr/bin/true"
     monkeypatch.setattr(inkex.command, "INKSCAPE_EXECUTABLE_NAME", executable)
     monkeypatch_inkscape_command_for_appimage()
-    assert inkex.command.INKSCAPE_EXECUTABLE_NAME == executable
+    assert executable == inkex.command.INKSCAPE_EXECUTABLE_NAME

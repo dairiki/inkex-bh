@@ -1,7 +1,6 @@
 # Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
-"""Some code for hacking around bugs in current and past version of inkex.
+"""Some code for hacking around bugs in current and past version of inkex."""
 
-"""
 from __future__ import annotations
 
 import os
@@ -84,7 +83,7 @@ def monkeypatch_inkscape_command_for_appimage() -> None:
     # but, at least, when exporting PNGs produces:
     #
     # inkscape: symbol lookup error:
-    #   /tmp/.mount_Inkscag6GeLM/usr/bin/../lib/x86_64-linux-gnu/inkscape/../libcairo.so.2:
+    #   /tmp/.mount_Inkscag6GeLM/usr/bin/../lib/x86_64-linux-gnu/inkscape/../libcairo.so.2:  # noqa: E501
     #   undefined symbol: pixman_image_set_dither
     #
     # See the /RunApp script in the Inkscape AppImage itself for an example

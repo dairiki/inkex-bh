@@ -8,9 +8,11 @@ Currently this module includes some help for drawing temporary boxes
 on the output image for debugging purposes.
 
 """
+
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import Iterator
-from typing import List
 from typing import Union
 
 import inkex
@@ -39,7 +41,7 @@ class Debug:
         self.svg.append(rect)
 
 
-_debug: List[Debug] = []
+_debug: list[Debug] = []
 
 
 @contextmanager

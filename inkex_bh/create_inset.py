@@ -12,9 +12,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-""" Export bbox of selection to PNG image
+"""Export bbox of selection to PNG image"""
 
-"""
 from __future__ import annotations
 
 import base64
@@ -36,7 +35,6 @@ from ._compat import TypedDict
 from .constants import BH_INSET_EXPORT_ID
 from .constants import BH_INSET_VISIBLE_LAYERS
 from .workarounds import monkeypatch_inkscape_command_for_appimage
-
 
 DEFAULT_BACKGROUND = inkex.Color("white")
 XLINK_HREF = "{http://www.w3.org/1999/xlink}href"

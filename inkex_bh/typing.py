@@ -1,6 +1,6 @@
 # Copyright (C) 2019–2022 Geoffrey T. Dairiki <dairiki@dairiki.org>
-"""Type definitions.
-"""
+"""Type definitions."""
+
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union

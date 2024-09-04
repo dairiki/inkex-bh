@@ -12,6 +12,7 @@ This essentially does a:
 Where <module> is taken from the --module (or -m) command line parameter.
 
 """
+
 import argparse
 import os
 import runpy
@@ -82,7 +83,7 @@ with ExitStack() as stack:
     log_file = os.environ.get("INKEX_BH_LOG_FILE")
     if log_file:
         try:
-            fp = open(log_file, "a")
+            fp = open(log_file, "a")  # noqa: SIM115
         except OSError as exc:
             print(f"{log_file}: {exc}", file=sys.stderr)
         else:

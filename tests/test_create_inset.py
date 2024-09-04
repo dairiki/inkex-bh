@@ -17,7 +17,6 @@ from inkex_bh.create_inset import export_png
 from inkex_bh.create_inset import get_visible_layers
 from inkex_bh.create_inset import png_dimensions
 
-
 _inkscape_version = None
 
 

@@ -228,7 +228,7 @@ def dist_zip(tmp_path_factory: pytest.TempPathFactory) -> Path:
         check=True,
     )
 
-    output = list(p for p in distdir.iterdir() if p.suffix == ".zip")
+    output = [p for p in distdir.iterdir() if p.suffix == ".zip"]
     assert len(output) == 1
     return output.pop()
 

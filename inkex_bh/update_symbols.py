@@ -12,9 +12,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-""" Randomize the position of selected elements
+"""Randomize the position of selected elements"""
 
-"""
 from __future__ import annotations
 
 import json
@@ -159,7 +158,7 @@ def load_symbols(
     return symbols_by_id
 
 
-def _symbols_equal(sym1: inkex.Symbol, sym2: inkex.Symbol) -> bool:
+def _symbols_equal(sym1: inkex.Symbol, sym2: inkex.Symbol) -> bool:  # noqa: C901
     id1 = sym1.get("id")
     id2 = sym2.get("id")
     id_prefix = id1 + ":"
@@ -192,9 +191,7 @@ def _symbols_equal(sym1: inkex.Symbol, sym2: inkex.Symbol) -> bool:
             return False
         if normalize_attrib(e1.attrib) != normalize_attrib(e2.attrib):
             return False
-        if not all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2)):
-            return False
-        return True
+        return all(elements_equal(c1, c2) for c1, c2 in zip(e1, e2))
 
     if id1 != id2:
         return False
@@ -251,12 +248,11 @@ class UpdateSymbols(inkex.EffectExtension):  # type: ignore[misc]
         if stats.updated == 0:
             inkex.errormsg(f"Of {stats.known} known symbols none were out-of-date")
             return False
-        elif dry_run:
+        if dry_run:
             inkex.errormsg(f"DRY-RUN: would have updated {updated}")
             return False
-        else:
-            inkex.errormsg(f"UPDATED {updated}")
-            return True
+        inkex.errormsg(f"UPDATED {updated}")
+        return True
 
 
 if __name__ == "__main__":

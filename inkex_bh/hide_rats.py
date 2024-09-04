@@ -12,20 +12,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-""" Randomize the position of selected elements
+"""Randomize the position of selected elements"""
 
-"""
+from __future__ import annotations
+
 import random
 import re
 from argparse import ArgumentParser
 from functools import reduce
 from operator import add
+from types import MappingProxyType
 from typing import Iterable
 from typing import Iterator
-from typing import Optional
 from typing import Sequence
-from typing import Set
-from typing import Tuple
 
 import inkex
 from inkex.localization import inkex_gettext as _
@@ -33,13 +32,13 @@ from inkex.localization import inkex_gettext as _
 from . import debug
 from . import typing as types
 from ._compat import compose_transforms
+from ._compat import Final
 from ._compat import Literal
 from ._compat import to_dimensionless
 from .constants import BH_RAT_GUIDE_MODE
 from .constants import BH_RAT_PLACEMENT
 from .constants import NSMAP
 from .workarounds import text_bbox_hack
-
 
 SVG_USE = inkex.addNS("use", "svg")
 
@@ -54,7 +53,7 @@ def _xp_str(s: str) -> str:
     return f"concat({','.join(map(_xp_str, strs))})"
 
 
-def containing_layer(elem: inkex.BaseElement) -> Optional[inkex.Layer]:
+def containing_layer(elem: inkex.BaseElement) -> inkex.Layer | None:
     """Return svg:g element for the layer containing elem or None if there
     is no such layer.
 
@@ -116,22 +115,26 @@ class RatGuide:
         self._add_rect(bbox, "exclusion")
         self.exclusions.append(bbox)
 
-    DEFAULT_STYLE = {
-        "fill": "#c68c8c",
-        "fill-opacity": "0.125",
-        "stroke": "#ff0000",
-        "stroke-width": "1",
-        "stroke-opacity": "0.5",
-        "stroke-dasharray": "2,6",
-        "stroke-linecap": "round",
-        "stroke-miterlimit": "4",
-    }
-    STYLES = {
-        "notation": {
-            **DEFAULT_STYLE,
-            "fill": "#aaaaaa",
+    DEFAULT_STYLE: Final = MappingProxyType(
+        {
+            "fill": "#c68c8c",
+            "fill-opacity": "0.125",
+            "stroke": "#ff0000",
+            "stroke-width": "1",
+            "stroke-opacity": "0.5",
+            "stroke-dasharray": "2,6",
+            "stroke-linecap": "round",
+            "stroke-miterlimit": "4",
         }
-    }
+    )
+    STYLES: Final = MappingProxyType(
+        {
+            "notation": {
+                **DEFAULT_STYLE,
+                "fill": "#aaaaaa",
+            }
+        }
+    )
 
     def _add_rect(self, bbox: inkex.BoundingBox, mode: GuideMode) -> None:
         rect = inkex.Rectangle.new(bbox.left, bbox.top, bbox.width, bbox.height)
@@ -231,7 +234,7 @@ class BadRats(ValueError):
 
 def _clone_layer(
     layer: inkex.Layer, selected: Sequence[inkex.BaseElement]
-) -> Tuple[inkex.Layer, Set[inkex.BaseElement]]:
+) -> tuple[inkex.Layer, set[inkex.BaseElement]]:
     cloned_selected = set()
 
     def clone(elem: inkex.BaseElement) -> inkex.BaseElement:
@@ -251,7 +254,7 @@ def _clone_layer(
 
 
 def _dwim_rat_layer_name(layer_labels: Iterable[str]) -> str:
-    pat = re.compile(r"^ (\[o.*?\].*?) \s+ (\d+) \s*$", re.X)
+    pat = re.compile(r"^ (\[o.*?\].*?) \s+ (\d+) \s*$", re.VERBOSE)
     matches = list(filter(None, map(pat.match, layer_labels)))
     names = {m.group(1) for m in matches}
     max_index = max((int(m.group(2)) for m in matches), default=0)
@@ -261,7 +264,7 @@ def _dwim_rat_layer_name(layer_labels: Iterable[str]) -> str:
 
 def clone_rat_layer(
     rat_layer: inkex.Layer, rats: Sequence[inkex.Use]
-) -> Tuple[inkex.Layer, Set[inkex.BaseElement]]:
+) -> tuple[inkex.Layer, set[inkex.BaseElement]]:
     new_layer, new_rats = _clone_layer(rat_layer, rats)
     layer_labels = rat_layer.xpath(
         "../svg:g[@inkscape:groupmode='layer']/@inkscape:label", namespaces=NSMAP
